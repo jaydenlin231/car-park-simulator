@@ -38,8 +38,12 @@ bool create_shm(shared_memory_t *shm) {
         perror("mmap error");
         return false;
     }
+
+    // Inistalise the data
+
     return true;
 }
 
 int main() {
+    // create_shm(SHM_NAME);
 }

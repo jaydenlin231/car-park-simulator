@@ -1,33 +1,31 @@
 #pragma once
+#include <pthread.h>
 #include <semaphore.h>
+
+pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;
 
 // I didn't do the pthread stuff so just placeholder char[] now
 
 typedef struct LPR {
-    // A pthread_mutex_t mutex lock (40 bytes, at bytes 0-39)
-    char mutexlock[40];
-    // A pthread_cond_t condition variable (48 bytes, at bytes 40-87)
-    char cond[48];
+    pthread_mutex_t m;
+    pthread_cond_t c;
     char plate[6];
     char padding[2];
 
 } LPR_t;
 
 typedef struct boomGate {
-    // A pthread_mutex_t mutex lock (40 bytes, at bytes 0-39)
-    char mutexlock[40];
-    // A pthread_cond_t condition variable (48 bytes, at bytes 40-87)
-    char cond[48];
+    pthread_mutex_t m;
+    pthread_cond_t c;
     char status;
     char padding[7];
 
 } boomGate_t;
 
 typedef struct infoSign {
-    // A pthread_mutex_t mutex lock (40 bytes, at bytes 0-39)
-    char mutexlock[40];
-    // A pthread_cond_t condition variable (48 bytes, at bytes 40-87)
-    char cond[48];
+    pthread_mutex_t m;
+    pthread_cond_t c;
     char display;
     char padding[7];
 

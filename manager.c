@@ -16,7 +16,7 @@
 #define EXITS 5
 
 int main() {
-    data_t A;
+    LPR_t A;
 
     printf("Size of struct: %ld\n", sizeof(A));
 
