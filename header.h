@@ -1,6 +1,8 @@
 #pragma once
 #include <semaphore.h>
 
+// I didn't do the pthread stuff so just placeholder char[] now
+
 typedef struct LPR {
     // A pthread_mutex_t mutex lock (40 bytes, at bytes 0-39)
     char mutexlock[40];
