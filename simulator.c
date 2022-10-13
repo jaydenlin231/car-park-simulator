@@ -16,7 +16,7 @@
 #define ENTRANCES 5
 #define EXITS 5
 #define SHM_NAME "/PARKING"
-#define SHM_SZ 2920
+#define SHM_SZ sizeof(data_t)
 
 bool create_shm(shared_memory_t *shm) {
     shm_unlink(SHM_NAME);
