@@ -2,6 +2,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#define LEVELS 5
+#define ENTRANCES 5
+#define EXITS 5
+
 pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;
 
@@ -59,25 +63,15 @@ typedef struct level {
  */
 typedef struct data {
     // Entrances
-    entrance_t entrance1;
-    entrance_t entrance2;
-    entrance_t entrance3;
-    entrance_t entrance4;
-    entrance_t entrance5;
+    entrance_t entrances[ENTRANCES];
 
     // Exits
-    exit_t exit1;
-    exit_t exit2;
-    exit_t exit3;
-    exit_t exit4;
-    exit_t exit5;
+    exit_t exits[EXITS];
 
     // Levels
-    level_t level1;
-    level_t level2;
-    level_t level3;
-    level_t level4;
-    level_t level5;
+    level_t levels[LEVELS];
+
+    int test;
 
 } data_t;
 
