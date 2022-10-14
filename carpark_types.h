@@ -25,7 +25,7 @@ typedef struct boom_gate {
     char status;
     char padding[7];
 
-} boomGate_t;
+} boom_gate_t;
 
 typedef struct info_sign {
     pthread_mutex_t m;
@@ -33,18 +33,18 @@ typedef struct info_sign {
     char display;
     char padding[7];
 
-} infoSign_t;
+} info_sign_t;
 
 typedef struct entrance {
     LPR_t lpr;
-    boomGate_t boom_gate;
-    infoSign_t info_sign;
+    boom_gate_t boom_gate;
+    info_sign_t info_sign;
 
 } entrance_t;
 
 typedef struct exit {
     LPR_t lpr;
-    boomGate_t boom_gate;
+    boom_gate_t boom_gate;
 
 } exit_t;
 
