@@ -117,11 +117,43 @@ void init_shared_memory_data(shared_memory_t *shm){
     level_t *level;
     for (size_t i = 0; i < LEVELS; i++) {
         get_level(shm, i, &level);
-        level_t *level = &(shm->data->levels[i]);
         pthread_mutex_init(&level->lpr.mutex, &mutexattr);
 		pthread_cond_init(&level->lpr.cond, &condattr);
         printf("Level %d: %p\n", i, level);
         // TODO: init LRP data here
+    }
+
+    pthread_mutexattr_destroy(&mutexattr);
+	pthread_condattr_destroy(&condattr);
+    return;
+}
+
+void destroy_shared_memory_data(shared_memory_t *shm){
+    entrance_t *entrance;
+    for (size_t i = 0; i < ENTRANCES; i++) {
+        get_entrance(shm, i, &entrance);
+        pthread_mutex_destroy(&entrance->lpr.mutex);
+        pthread_cond_destroy(&entrance->lpr.cond);
+		pthread_mutex_destroy(&entrance->boom_gate.mutex);
+		pthread_cond_destroy(&entrance->boom_gate.cond);
+		pthread_mutex_destroy(&entrance->info_sign.mutex);
+		pthread_cond_destroy(&entrance->info_sign.cond);
+    }
+
+    exit_t *exit;
+    for (size_t i = 0; i < EXITS; i++) {
+        get_exit(shm, i, &exit);
+        pthread_mutex_destroy(&exit->lpr.mutex);
+        pthread_cond_destroy(&exit->lpr.cond);
+        pthread_mutex_destroy(&exit->boom_gate.mutex);
+        pthread_cond_destroy(&exit->boom_gate.cond);
+    }
+
+    level_t *level;
+    for (size_t i = 0; i < LEVELS; i++) {
+        get_level(shm, i, &level);
+        pthread_mutex_destroy(&level->lpr.mutex);
+        pthread_cond_destroy(&level->lpr.cond);
     }
     return;
 }

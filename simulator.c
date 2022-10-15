@@ -112,6 +112,7 @@ int main() {
     printf("Joined Entrance Thread.\n");
 
     sem_post(simulation_ended_sem);
+    cleanup_shared_memory_data(&shm);
     destroy_shared_object(&shm);
 
     printf("=================.\n");
