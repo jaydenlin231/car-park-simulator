@@ -12,24 +12,24 @@
 // I didn't do the pthread stuff so just placeholder char[] now
 
 typedef struct LPR {
-    pthread_mutex_t m;
-    pthread_cond_t c;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
     char plate[6];
     char padding[2];
 
 } LPR_t;
 
 typedef struct boom_gate {
-    pthread_mutex_t m;
-    pthread_cond_t c;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
     char status;
     char padding[7];
 
 } boom_gate_t;
 
 typedef struct info_sign {
-    pthread_mutex_t m;
-    pthread_cond_t c;
+    pthread_mutex_t mutex;
+    pthread_cond_t cond;
     char display;
     char padding[7];
 

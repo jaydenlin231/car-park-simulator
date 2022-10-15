@@ -52,7 +52,7 @@ bool create_shared_object(shared_memory_t *shm) {
 
 void destroy_shared_object(shared_memory_t *shm) {
     // Remove the shared memory object.
-    if(munmap(shm->data, SHM_SZ)!= 0){
+    if(munmap(shm->data, SHM_SZ) != 0){
         perror("munmap() failed");
     }
     if(shm_unlink(shm->name) != 0){
@@ -78,4 +78,68 @@ bool get_shared_object(shared_memory_t *shm) {
     }
 
     return true;
+}
+
+void init_shared_memory_data(shared_memory_t *shm){
+    // Set process shared attributes
+    pthread_mutexattr_t mutexattr;
+	pthread_condattr_t condattr;
+    pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
+	pthread_condattr_setpshared(&condattr, PTHREAD_PROCESS_SHARED);
+
+    entrance_t *entrance;
+    for (size_t i = 0; i < ENTRANCES; i++) {
+        get_entrance(shm, i, &entrance);
+        pthread_mutex_init(&entrance->lpr.mutex, &mutexattr);
+		pthread_cond_init(&entrance->lpr.cond, &condattr);
+		pthread_mutex_init(&entrance->boom_gate.mutex, &mutexattr);
+		pthread_cond_init(&entrance->boom_gate.cond, &condattr);
+		pthread_mutex_init(&entrance->info_sign.mutex, &mutexattr);
+		pthread_cond_init(&entrance->info_sign.cond, &condattr);
+        printf("Entrance %d: %p\n", i, entrance);
+        // TODO: init LRP data here
+        // TODO: init Booom gate here
+        // TODO: init Info sign here
+    }
+
+    exit_t *exit;
+    for (size_t i = 0; i < EXITS; i++) {
+        get_exit(shm, i, &exit);
+        pthread_mutex_init(&exit->lpr.mutex, &mutexattr);
+		pthread_cond_init(&exit->lpr.cond, &condattr);
+		pthread_mutex_init(&exit->boom_gate.mutex, &mutexattr);
+		pthread_cond_init(&exit->boom_gate.cond, &condattr);
+        printf("Exit %d: %p\n", i, exit);
+        // TODO: init LRP data here
+        // TODO: init Booom gate here
+    }
+
+    level_t *level;
+    for (size_t i = 0; i < LEVELS; i++) {
+        get_level(shm, i, &level);
+        level_t *level = &(shm->data->levels[i]);
+        pthread_mutex_init(&level->lpr.mutex, &mutexattr);
+		pthread_cond_init(&level->lpr.cond, &condattr);
+        printf("Level %d: %p\n", i, level);
+        // TODO: init LRP data here
+    }
+    return;
+}
+
+// Refer to following.
+// https://stackoverflow.com/questions/40167559/in-c-how-would-i-choose-whether-to-return-a-struct-or-a-pointer-to-a-struct
+void get_entrance(shared_memory_t *shm, int i, entrance_t **entrance) {
+    // TODO: error handling and return status code/bool?
+    *entrance = &(shm->data->entrances[i]);
+    return;
+}
+void get_exit(shared_memory_t *shm, int i, exit_t **exit) {
+    // TODO: error handling and return status code/bool?
+    *exit = &(shm->data->exits[i]);
+    return;
+}
+void get_level(shared_memory_t *shm, int i, level_t **level) {
+    // TODO: error handling and return status code/bool?
+    *level = &(shm->data->levels[i]);
+    return;
 }

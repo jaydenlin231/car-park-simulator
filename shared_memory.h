@@ -14,8 +14,6 @@ typedef struct data {
     // Levels
     level_t levels[LEVELS];
 
-    int test;
-
 } data_t;
 
 /**
@@ -35,3 +33,8 @@ typedef struct shared_memory {
 bool create_shared_object(shared_memory_t *shm);
 void destroy_shared_object(shared_memory_t *shm);
 bool get_shared_object(shared_memory_t *shm);
+void init_shared_memory_data(shared_memory_t *shm);
+
+void get_entrance(shared_memory_t *shm, int i, entrance_t **entrance);
+void get_exit(shared_memory_t *shm, int i, exit_t **exit);
+void get_level(shared_memory_t *shm, int i, level_t **level);
