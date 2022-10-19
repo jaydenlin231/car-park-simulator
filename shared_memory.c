@@ -80,38 +80,108 @@ bool get_shared_object(shared_memory_t *shm) {
     return true;
 }
 
+void showPshared(pthread_mutexattr_t *mta) {
+  int           rc;
+  int           pshared;
+ 
+  printf("Check pshared attribute\n");
+  rc = pthread_mutexattr_getpshared(mta, &pshared);
+ 
+  printf("The pshared attributed is: ");
+  switch (pshared) {
+  case PTHREAD_PROCESS_PRIVATE:
+    printf("PTHREAD_PROCESS_PRIVATE\n");
+    break;
+  case PTHREAD_PROCESS_SHARED:
+    printf("PTHREAD_PROCESS_SHARED\n");
+    break;
+  default : 
+    printf("! pshared Error !\n");
+    exit(1); 
+  }
+  return;
+}
+
+
 void init_shared_memory_data(shared_memory_t *shm){
     // Set process shared attributes
     pthread_mutexattr_t mutexattr;
 	pthread_condattr_t condattr;
-    pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
-	pthread_condattr_setpshared(&condattr, PTHREAD_PROCESS_SHARED);
+
+    if (pthread_mutexattr_init(&mutexattr) != 0) {
+        perror("pthread_mutexattr_setpshared failed");
+        exit(1);
+    }
+    if ( pthread_condattr_init(&condattr) != 0) {
+        perror("pthread_condattr_setpshared failed");
+        exit(1);
+    }
+    if (pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED) != 0) {
+        perror("pthread_mutexattr_setpshared failed");
+        exit(1);
+    }
+    if (pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK) != 0) {
+        perror("pthread_mutexattr_setpshared failed");
+        exit(1);
+    }
+    if (pthread_condattr_setpshared(&condattr, PTHREAD_PROCESS_SHARED) != 0) {
+        perror("pthread_condattr_setpshared failed");
+        exit(1);
+    }
+
+    showPshared(&mutexattr);
 
     entrance_t *entrance;
     for (size_t i = 0; i < ENTRANCES; i++) {
         get_entrance(shm, i, &entrance);
-        pthread_mutex_init(&entrance->lpr.mutex, &mutexattr);
-		pthread_cond_init(&entrance->lpr.cond, &condattr);
-		pthread_mutex_init(&entrance->boom_gate.mutex, &mutexattr);
-		pthread_cond_init(&entrance->boom_gate.cond, &condattr);
-		pthread_mutex_init(&entrance->info_sign.mutex, &mutexattr);
-		pthread_cond_init(&entrance->info_sign.cond, &condattr);
+        printf("Entrance %d address %p\n",i, entrance);
+        if (pthread_mutex_init(&(entrance->lpr.mutex), &mutexattr) != 0) {
+            perror("entrance lpr pthread mutex attr init");
+            exit(1);
+        }
+        if (pthread_cond_init(&entrance->lpr.cond, &condattr) != 0) {
+            perror("entrance lpr pthread cond attr init");
+            exit(1);
+        }
+        if (pthread_mutex_init(&entrance->boom_gate.mutex, &mutexattr) != 0) {
+            perror("entrance boom gate pthread mutex attr init");
+            exit(1);
+        }
+        if (pthread_cond_init(&entrance->boom_gate.cond, &condattr) != 0) {
+            perror("entrance boom gate pthread cond attr init");
+            exit(1);
+        }
+        if (pthread_mutex_init(&entrance->info_sign.mutex, &mutexattr) != 0) {
+            perror("entrance info sign pthread mutex attr init");
+            exit(1);
+        }
+        if (pthread_cond_init(&entrance->info_sign.cond, &condattr) != 0) {
+            perror("entrance info sign pthread cond attr init");
+            exit(1);
+        }
         printf("Entrance %d: %p\n", i, entrance);
         // TODO: init LRP data here
         // TODO: init Booom gate here
+		entrance->boom_gate.status = BG_CLOSED;
         // TODO: init Info sign here
+        printf("Entrance %d Boom Gate %p status %c\n",i, &entrance->boom_gate,entrance->boom_gate.status);
+
     }
 
     exit_t *exit;
     for (size_t i = 0; i < EXITS; i++) {
         get_exit(shm, i, &exit);
-        pthread_mutex_init(&exit->lpr.mutex, &mutexattr);
+         if (pthread_mutex_init(&exit->lpr.mutex, &mutexattr) != 0) {
+            perror("exit lpr pthread mutex attr init");
+            printf("%d\n", pthread_mutex_init(&exit->lpr.mutex, &mutexattr));
+        }
 		pthread_cond_init(&exit->lpr.cond, &condattr);
 		pthread_mutex_init(&exit->boom_gate.mutex, &mutexattr);
 		pthread_cond_init(&exit->boom_gate.cond, &condattr);
         printf("Exit %d: %p\n", i, exit);
         // TODO: init LRP data here
         // TODO: init Booom gate here
+		exit->boom_gate.status = BG_CLOSED;
     }
 
     level_t *level;
@@ -123,12 +193,12 @@ void init_shared_memory_data(shared_memory_t *shm){
         // TODO: init LRP data here
     }
 
-    pthread_mutexattr_destroy(&mutexattr);
-	pthread_condattr_destroy(&condattr);
+    // pthread_mutexattr_destroy(&mutexattr); 
+	// pthread_condattr_destroy(&condattr);
     return;
 }
 
-void destroy_shared_memory_data(shared_memory_t *shm){
+void clean_shared_memory_data(shared_memory_t *shm){
     entrance_t *entrance;
     for (size_t i = 0; i < ENTRANCES; i++) {
         get_entrance(shm, i, &entrance);
