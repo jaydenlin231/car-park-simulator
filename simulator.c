@@ -20,6 +20,7 @@
 #define SHM_EST_SEM_NAME "/SHM_ESTABLISHED"
 #define SIM_READY_SEM_NAME "/SIM_READY"
 #define SIM_END_SEM_NAME "/SIM_ENDED"
+#define MAN_READY_SEM_NAME "/MAN_READY"
 #define MAN_END_SEM_NAME "/MAN_ENDED"
 
 
@@ -29,9 +30,10 @@
 pthread_mutex_t initialisation_mutex;
 pthread_cond_t initialisation_cond;
 
+sem_t *manager_ended_sem;
+
 // TODO: Remove testing stub
 int ready_threads = 0;
-bool quit = false;
 
 // TODO: Remove testing stub
 void *test_thread(void *data) {
@@ -44,78 +46,54 @@ void *test_thread(void *data) {
     pthread_mutex_unlock(&initialisation_mutex);
 }
 
-void *control_boom_gate(boom_gate_t *boom_gate, char update_status) {
-    // printf("Instruct Boom Gate %p Before lock\n", boom_gate);
-    // if(pthread_mutex_lock(&boom_gate->mutex)!= 0){
-    //     perror("pthread_mutex_lock");
-    // }
-    // printf("Instruct Boom Gate %p After lock\n", boom_gate);
+void *wait_manager_close(void *data)
+{
+    printf("Manager monitor thread waiting.\n");
+    sem_wait(manager_ended_sem);
+    printf("Manager monitor thread Woke\n");
+}
 
+void *control_boom_gate(boom_gate_t *boom_gate, char update_status) {
     if(update_status == BG_RAISING) {
-            printf("Instruct Boom Gate %p Before lock\n", boom_gate);
             pthread_mutex_lock(&boom_gate->mutex);
             printf("Instruct Boom Gate %p Raising\n", boom_gate);
             boom_gate->status = BG_RAISING;
             pthread_mutex_unlock(&boom_gate->mutex);
-            pthread_cond_signal(&boom_gate->cond);
+            pthread_cond_broadcast(&boom_gate->cond);
 
         } else if(update_status == BG_LOWERING) {
             printf("Instruct Boom Gate Lowering\n");
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_LOWERING;
             pthread_mutex_unlock(&boom_gate->mutex);
-            pthread_cond_signal(&boom_gate->cond);
+            pthread_cond_broadcast(&boom_gate->cond);
         }
-    // printf("Instruct Boom Gate %p Before unlock\n", boom_gate);
-    // pthread_mutex_unlock(&boom_gate->mutex);
-    // printf("Instruct Boom Gate %p After unlock\n", boom_gate);
-
 }
 
 
 void *handle_boom_gate(void *data) {
     boom_gate_t *boom_gate = (boom_gate_t *)data;
 
-
-    
     printf("Created Boom Gate %p Thread\n", boom_gate);
 
-    if(pthread_mutex_lock(&initialisation_mutex) != 0){
-        perror("init pthread_mutex_lock ");
-        exit(1);
-    }
+    pthread_mutex_lock(&initialisation_mutex);
     ready_threads++;
     pthread_cond_broadcast(&initialisation_cond);
     pthread_mutex_unlock(&initialisation_mutex);
     int num = 0;
-    printf("Started Boom Gate %p Thread\n", boom_gate);
     int test = 0;
     while (true) {
-        printf("\tBoom Gate %p Loop ran %d times.\n",boom_gate, ++test);
-        printf("\tBoom Gate %p Stauts: %c \n", boom_gate, boom_gate->status);
-        printf("\tBoom Gate %p Before lock \n", boom_gate);
-        if(pthread_mutex_lock(&boom_gate->mutex) != 0){
-            perror("pthread_mutex_lock");
-            exit(1);
-        }
-        printf("\tBoom Gate %p After lock \n", boom_gate);
+        printf("\tBoom Gate %p Monitor Loop ran %d times.\n",boom_gate, ++test);
+
+        pthread_mutex_lock(&boom_gate->mutex);
         
-        while (boom_gate->status != BG_RAISING && boom_gate->status != BG_LOWERING && boom_gate->status!= BG_QUIT) {
-            printf("\tBoom Gate %p Beofre cond wait \n", boom_gate);
-            if(pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex) != 0){
-                printf("\t\tBoom Gate %p Stauts: %c \n", boom_gate, boom_gate->status);
-                printf("\t\tBoom Gate %p Cond wait Mutex addr:%p Cond addr:%p\n", boom_gate, &boom_gate->mutex, &boom_gate->cond);
-                perror("\t\tBoom Gate pthread_cond_wait");
-                exit(1);
-            }
+        while (!(boom_gate->status == BG_RAISING || boom_gate->status == BG_LOWERING)) {
+            printf("\tBoom Gate %p Cond Wait BG_RAISING or BG_LOWERING. Current Status: %c.\n", boom_gate, boom_gate->status);
+            pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
         }
         pthread_mutex_unlock(&boom_gate->mutex);
-        if(boom_gate->status == BG_QUIT){
-            printf("Boom Gate Quit from waiting %p...\n", boom_gate);
-            return NULL;
-        }
-
-        printf("Boom Gate %p Stauts: %c \n", boom_gate, boom_gate->status);
+        
+        printf("Boom Gate %p Received Instruction Status: %c.\n", boom_gate, boom_gate->status);
         if(boom_gate->status == BG_RAISING) {
             printf("Raising Boom Gate %p...\n", boom_gate);
             printf("Waiting 10 ms\n");
@@ -135,11 +113,7 @@ void *handle_boom_gate(void *data) {
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
         } 
-        // pthread_mutex_unlock(&boom_gate->mutex);
-        // printf("Boom Gate %p After unlock \n", boom_gate);
-        // printf("Quit %d\n", quit);
     }
-    // test:
     printf("Boom Gate Quit before broadcast %p...\n", boom_gate);
     return NULL;
 }
@@ -155,16 +129,28 @@ void *generate_cars(void *arg) {
 
 int main() {
     shared_memory_t shm;
-    if(sem_unlink(SHM_EST_SEM_NAME)){
+    if(sem_unlink(SHM_EST_SEM_NAME) !=0){
         perror("sem_unlink(SHM_EST_SEM_NAME) failed");
+    }
+    if(sem_unlink(SIM_READY_SEM_NAME) != 0){
+        perror("shm_unlink(SIM_READY_SEM_NAME) failed");
     }
     if(sem_unlink(SIM_END_SEM_NAME) != 0){
         perror("shm_unlink(SIM_END_SEM_NAME) failed");
     }
+    if(sem_unlink(MAN_READY_SEM_NAME) != 0){
+        perror("shm_unlink(SIM_END_SEM_NAME) failed");
+    }
+    if(sem_unlink(MAN_END_SEM_NAME) != 0){
+        perror("shm_unlink(SIM_END_SEM_NAME) failed");
+    }
+    
+    
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ended_sem = sem_open(SIM_END_SEM_NAME, O_CREAT, 0644, 0);
-    sem_t *manager_ended_sem = sem_open(MAN_END_SEM_NAME, 0);
+    sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, O_CREAT, 0644, 0);
+    manager_ended_sem = sem_open(MAN_END_SEM_NAME, O_CREAT, 0644, 0);
 
     pthread_mutex_init(&initialisation_mutex, NULL);
     pthread_cond_init(&initialisation_cond, NULL);
@@ -180,13 +166,16 @@ int main() {
         return -1;
     }
 
-    printf("Waiting for Manager.\n");
+    printf("Waiting for Manager to connect to shm.\n");
     sem_wait(shm_established_sem);
+    printf("Manager connected to shm.\n");
 
-    printf("Manager connected.\n");
-    printf("=================.\n");
+    init_entrance_data(&shm);
+    printf("Finished init entrance data\n");
 
     pthread_t car_generation_thread;
+    pthread_t monitor_sim_thread;
+
     pthread_t entrance_threads[ENTRANCES];
     pthread_t exit_threads[EXITS];
     pthread_t level_threads[LEVELS];
@@ -194,50 +183,59 @@ int main() {
     printf("Init Entrance threads.\n");
 
     entrance_t *entrance = malloc(sizeof(entrance_t));
-    
     for (int i = 0; i < ENTRANCES; i++) {
         get_entrance(&shm, i, &entrance);
         boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
         pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
     }
-    // exit_t *exit;
-    for (int i = 0; i < EXITS; i++) {
-        int* data = malloc(sizeof(int));
-        *data = i;
-        pthread_create(&exit_threads[i], NULL, test_thread, (void *)data);
-    }
-    // level_t *level;
-    for (int i = 0; i < LEVELS; i++) {
-        int* data = malloc(sizeof(int));
-        *data = i;
-        pthread_create(&level_threads[i], NULL, test_thread, (void *)data);
-    }
+    // // exit_t *exit;
+    // for (int i = 0; i < EXITS; i++) {
+    //     int* data = malloc(sizeof(int));
+    //     *data = i;
+    //     pthread_create(&exit_threads[i], NULL, test_thread, (void *)data);
+    // }
+    // // level_t *level;
+    // for (int i = 0; i < LEVELS; i++) {
+    //     int* data = malloc(sizeof(int));
+    //     *data = i;
+    //     pthread_create(&level_threads[i], NULL, test_thread, (void *)data);
+    // }
     
+
+    printf("=================.\n");
+    printf("Start Monitor Thread.\n");
+    pthread_create(&monitor_sim_thread, NULL, wait_manager_close, NULL);
+    
+    printf("Checking Init Entrance threads.\n");
     pthread_mutex_lock(&initialisation_mutex);
     int num = 0;
     // TODO: Add number of thread def?
-    while(ready_threads < (ENTRANCES + EXITS + LEVELS)){
-        if(pthread_cond_wait(&initialisation_cond, &initialisation_mutex) != 0){
-            perror("pthread_cond_wait initialisatoin_cond");
-            // exit(1);
-        };
+    while(ready_threads < (ENTRANCES)){
+        pthread_cond_wait(&initialisation_cond, &initialisation_mutex);
         num ++;
         printf("Checking condition for %d times.\n", num);
         printf("Ready %d threads.\n", ready_threads);
     }
     pthread_mutex_unlock(&initialisation_mutex);
-    // sleep(5);
-    sem_post(simulation_ready_sem);
     printf("Finish Init Entrance threads.\n");
+    
+    sem_post(simulation_ready_sem);
+    printf("Simulation ready to start\n");
+    printf("Waiting for manager ready\n");
 
-    // for (size_t i = 0; i < ENTRANCES; i++) {
-    //     get_entrance(&shm, i, &entrance);
-    //     boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
-    //     boom_gate = &entrance->boom_gate;
-    //     control_boom_gate(boom_gate, BG_RAISING);
-        // sleep(10);
-    // }
+    sem_wait(manager_ready_sem);
+
+    for (int i = 0; i < ENTRANCES; i++) {
+        if(i % 2 == 1){
+            printf("Instructing Entrance %d\n", i);
+            get_entrance(&shm, i, &entrance);
+            boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
+            boom_gate = &entrance->boom_gate;
+            control_boom_gate(boom_gate, BG_RAISING);
+            sleep(2);
+        }
+    }
     
     printf("=================.\n");
     printf("Start Car Thread.\n");
@@ -246,42 +244,20 @@ int main() {
     pthread_join(car_generation_thread, NULL);
     printf("=================.\n");
     printf("Joined Car Thread.\n");
-    // sleep(3);
+    
     sem_post(simulation_ended_sem);
-    quit = true;
-    printf("I'm here.\n");
-    // for (int i = 0; i < ENTRANCES; i++) {
-    //     get_entrance(&shm, i, &entrance);
-    //     // pthread_mutex_lock(&entrance->boom_gate.mutex);
-    //     printf("Set Boom Gate %p to Quit...\n", &entrance->boom_gate);
-    //     entrance->boom_gate.status = BG_QUIT;
-    //     pthread_cond_signal(&entrance->boom_gate.cond);
-    //     pthread_join(entrance_threads[i], NULL);
-    // }
-    // printf("=================.\n");
-    // printf("Joined Entrance Threads.\n");
+    
+    pthread_join(monitor_sim_thread, NULL);
+    printf("=================.\n");
+    printf("Manager ended.\n");
 
-    // for (int i = 0; i < EXITS; i++) {
-    //     pthread_join(exit_threads[i], NULL);
-    // }
-    // printf("=================.\n");
-    // printf("Joined Exit Threads.\n");
-
-    // for (int i = 0; i < LEVELS; i++) {
-    //     pthread_join(level_threads[i], NULL);
-    // }
-    // printf("=================.\n");
-    // printf("Joined Level Thread.\n");
-    // printf("=================.\n");
-    // printf("Joined All Threads.\n");
-
-    // sem_post(simulation_ended_sem);
-    printf("Wait for manager to end.\n");
-    sem_wait(manager_ended_sem);
-    clean_shared_memory_data(&shm);
+    // Might need this?
+    // clean_shared_memory_data(&shm);
+    // printf("clean_shared_memory_data done.\n");
     destroy_shared_object(&shm);
+    printf("Destroyed shm.\n");
 
     printf("=================.\n");
-    printf("Simulator finished.\n");
+    printf("Simulator Exited.\n");
     return 0;
 }
