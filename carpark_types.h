@@ -6,6 +6,12 @@
 #define ENTRANCES 5
 #define EXITS 5
 
+#define BG_RAISING ('R')
+#define BG_OPENED ('O')
+#define BG_LOWERING ('L')
+#define BG_CLOSED ('C')
+#define BG_QUIT ('Q')
+
 // pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
 // pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;
 
@@ -15,7 +21,7 @@ typedef struct LPR {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     char plate[6];
-    char padding[2];
+    // char padding[2];
 
 } LPR_t;
 
@@ -23,7 +29,7 @@ typedef struct boom_gate {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     char status;
-    char padding[7];
+    // char padding[7];
 
 } boom_gate_t;
 
@@ -31,7 +37,7 @@ typedef struct info_sign {
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     char display;
-    char padding[7];
+    // char padding[7];
 
 } info_sign_t;
 
@@ -54,6 +60,6 @@ typedef struct level {
     char sensor[2];
     // alarm_t *alarm;
     char alarm;
-    char padding[5];
+    // char padding[5];
 
 } level_t;

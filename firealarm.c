@@ -190,7 +190,7 @@ emergency_mode:
                 pthread_cond_broadcast(&sign->c);
                 pthread_mutex_unlock(&sign->m);
             }
-            usleep(20000);
+            sleep(2);
         }
     }
 
