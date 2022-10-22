@@ -11,8 +11,6 @@ struct item {
 
 };
 
-void item_print(item_t *i);
-
 
 // A hash table mapping a string to an integer.
 typedef struct htab {
@@ -22,6 +20,7 @@ typedef struct htab {
 } htab_t;
 
 
+void item_print(item_t *i);
 bool htab_init(htab_t *h, size_t n);
 size_t djb_hash(char *s);
 size_t htab_index(htab_t *h, char *key);

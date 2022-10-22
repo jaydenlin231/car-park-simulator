@@ -6,11 +6,10 @@
 
 #include "hashtable.h"
 
+
 void item_print(item_t *i) {
     printf("key=%s value=%d", i->key, i->value);
 }
-
-
 
 // Initialise a new hash table with n buckets.
 // pre: true
@@ -98,7 +97,6 @@ void htab_print(htab_t *h) {
             for (item_t *j = h->buckets[i]; j != NULL; j = j->next)
             {
                 item_print(j);
-                
                 if (j->next != NULL)
                 {
                     printf(" -> ");
@@ -132,7 +130,7 @@ void htab_delete(htab_t *h, char *key) {
             break;
         }
         previous = current;
-        current = (item_t *)current->next;
+        current = current->next;
     }
 }
 
@@ -146,7 +144,7 @@ void htab_destroy(htab_t *h) {
         item_t *bucket = h->buckets[i];
         while (bucket != NULL)
         {
-            item_t *next =bucket->next;
+            item_t *next = bucket->next;
             free(bucket);
             bucket = next;
         }

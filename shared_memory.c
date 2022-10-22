@@ -84,7 +84,8 @@ void showPshared(pthread_mutexattr_t *mta) {
 //   int           rc;
   int           pshared;
  
-  printf("Check pshared attribute\n");
+  printf("Check pshared attribute\n"); 
+//   rc = pthread_mutexattr_getpshared(mta, &pshared);
   pthread_mutexattr_getpshared(mta, &pshared);
  
   printf("The pshared attributed is: ");
@@ -102,6 +103,20 @@ void showPshared(pthread_mutexattr_t *mta) {
   return;
 }
 
+void init_entrance_data(shared_memory_t *shm){
+
+    entrance_t *entrance;
+    for (size_t i = 0; i < ENTRANCES; i++) {
+        get_entrance(shm, i, &entrance);
+        printf("Entrance %ld address %p\n",i, entrance);
+        pthread_mutex_lock(&entrance->boom_gate.mutex);
+		entrance->boom_gate.status = BG_CLOSED;
+        pthread_cond_broadcast(&entrance->boom_gate.cond);
+        pthread_mutex_unlock(&entrance->boom_gate.mutex);
+        // TODO: init Info sign here
+        printf("Entrance %ld Boom Gate %p status %c\n",i, &entrance->boom_gate,entrance->boom_gate.status);
+    }
+}
 
 void init_shared_memory_data(shared_memory_t *shm){
     // Set process shared attributes
@@ -162,9 +177,12 @@ void init_shared_memory_data(shared_memory_t *shm){
         printf("Entrance %ld: %p\n", i, entrance);
         // TODO: init LRP data here
         // TODO: init Booom gate here
-		entrance->boom_gate.status = BG_CLOSED;
-        // TODO: init Info sign here
-        printf("Entrance %ld Boom Gate %p status %c\n",i, &entrance->boom_gate,entrance->boom_gate.status);
+        // pthread_mutex_lock(&entrance->boom_gate.mutex);
+		// entrance->boom_gate.status = BG_CLOSED;
+        // pthread_cond_signal(&entrance->boom_gate.cond);
+        // pthread_mutex_unlock(&entrance->boom_gate.mutex);
+        // // TODO: init Info sign here
+        // printf("Entrance %d Boom Gate %p status %c\n",i, &entrance->boom_gate,entrance->boom_gate.status);
 
     }
 
