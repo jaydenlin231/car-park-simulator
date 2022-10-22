@@ -130,9 +130,12 @@ void *generate_cars(void *arg) {
     //     sleep(2);
     // }
     // return NULL;
+    char six_d_plate[6];
+
+    pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
     int bool_for_checking = 0;
     char file_location[] = "plates.txt";
-    printf("%s\n", file_location );
+    // printf("%s\n", file_location );
     FILE *f = fopen(file_location, "r");
     if (!f)
     {
@@ -140,6 +143,7 @@ void *generate_cars(void *arg) {
         return (NULL);
         bool_for_checking = 1; 
     }
+    int total_plates;
    
 
     //create two d array  //int 100 is 100 plates in .txt
@@ -157,11 +161,13 @@ void *generate_cars(void *arg) {
 
     while((line< 100) && (fscanf(f, "%s", buffer) != EOF))
     {
-        printf("Read plate %s\n", buffer);
+        // printf("Read plate %s\n", buffer);
     
         strcpy(plates[line], buffer);
         line++;
     }
+    total_plates = line; 
+    // printf("%d\n", total_plates);
     // plates_len = line;
     if (bool_for_checking != 0)
     {
@@ -170,10 +176,65 @@ void *generate_cars(void *arg) {
     }
     bool_for_checking = 0; 
 
+
+    
+
+    while(true)
+    {
+        sleep(2);
+        // char result;
+        pthread_mutex_lock(&lock_rand_num);
+        int halfChance = rand() % 2;
+        pthread_mutex_unlock(&lock_rand_num);
+        if(halfChance == 1)
+        {
+            pthread_mutex_lock(&lock_rand_num);
+
+            int index;
+            index = (rand() % ((total_plates - 1) + 0 - 1)) +0;
+            pthread_mutex_unlock(&lock_rand_num);
+            for (size_t i = 0; i < 3; i++)
+            {
+                six_d_plate[i] = plates[index][i];
+            }
+
+            for (size_t i = 3; i < 6; i++)
+            {
+                six_d_plate[i] = plates[index][i];
+            }
+            for (size_t i = 6; i<7; i++ )
+            {
+                six_d_plate[i] = '\0';
+            }
+        }
+        else
+        {
+            pthread_mutex_lock(&lock_rand_num);
+            for (int i=0; i<3;i++){
+                six_d_plate[i] = '0' + rand() % 9;
+                six_d_plate[i+3] = 'A' + rand() % 26;
+            }
+            for (size_t i = 6; i<7; i++ )
+            {
+                six_d_plate[i] = '\0';
+            }
+            pthread_mutex_unlock(&lock_rand_num);
+        }
+        // printf("%c\n", six_d_plate[5]);
+        printf("%s\n", six_d_plate);
+
+        // printf("%c\n", six_d_plate[7]);
+
+
+    }
+    //printf("%s\n", six_d_plate);
+    
+
     return(NULL);
 
     // char six_digit_plate[6];
 }
+
 
 
 int main() {
@@ -288,6 +349,8 @@ int main() {
     
     printf("=================.\n");
     printf("Start Car Thread.\n");
+
+
     pthread_create(&car_generation_thread, NULL, generate_cars, NULL);
 
     pthread_join(car_generation_thread, NULL);
