@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <errno.h>
+#include <string.h>
+#include <inttypes.h>
+
 
 #include "carpark_types.h"
 #include "shared_memory.h"

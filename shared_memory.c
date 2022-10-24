@@ -84,8 +84,7 @@ void showPshared(pthread_mutexattr_t *mta) {
 //   int           rc;
   int           pshared;
  
-  printf("Check pshared attribute\n"); 
-//   rc = pthread_mutexattr_getpshared(mta, &pshared);
+  printf("Check pshared attribute\n");
   pthread_mutexattr_getpshared(mta, &pshared);
  
   printf("The pshared attributed is: ");
