@@ -40,15 +40,12 @@ sem_t *manager_ended_sem;
 // TODO: Remove testing stub
 int ready_threads = 0;
 
-typedef struct entrance_data
-{
-    entrance_t* entrance;
-    queue_t* entrance_queue;
-    pthread_mutex_t mutex;
-    // pthread_cond_t entrance_cond;
-    pthread_cond_t cond;
-
-}entrance_data_t;
+typedef struct sh_entrance_data {
+    entrance_t *entrances[ENTRANCES];
+    queue_t *entrance_queues[ENTRANCES];
+    pthread_mutex_t mutexs[ENTRANCES];
+    pthread_cond_t conds[ENTRANCES];
+} sh_entrance_data_t;
 
 // TODO: Remove testing stub
 void *test_thread(void *data) {
@@ -137,7 +134,8 @@ void *handle_boom_gate(void *data) {
 }
 
 void *generate_cars(void *arg) {
-    queue_t **entrance_queues = (queue_t **) arg;
+    sh_entrance_data_t *sh_entrance_data = (sh_entrance_data_t *) arg;
+    queue_t **entrance_queues = sh_entrance_data->entrance_queues;
 
     pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
     int bool_for_checking = 0;
@@ -232,7 +230,13 @@ void *generate_cars(void *arg) {
         char *plate_string = malloc(sizeof(char) * 7);
         // plate_string[6] = '\0';
         strcpy(plate_string, six_d_plate);
+        if(pthread_mutex_lock(&sh_entrance_data->mutexs[rand_entrance])!=0){
+            perror("pthread_mutex_lock failed");
+        };
         enqueue(entrance_queues[rand_entrance], plate_string);
+        if(pthread_mutex_unlock(&sh_entrance_data->mutexs[rand_entrance])!=0){
+            perror("pthread_mutex_unlock failed");
+        };
 
         for(int i = 0; i < ENTRANCES; i++){
             print_queue(entrance_queues[i]);
@@ -302,20 +306,16 @@ int main() {
     // pthread_t level_threads[LEVELS];
 
     queue_t* entrance_queues[ENTRANCES];
-    entrance_data_t entrance_datas[ENTRANCES];
-    
+    sh_entrance_data_t *sh_entrance_data = malloc(sizeof(sh_entrance_data_t));
     printf("Init Entrance threads.\n");
 
     entrance_t *entrance = malloc(sizeof(entrance_t));
     for (int i = 0; i < ENTRANCES; i++) {
         get_entrance(&shm, i, &entrance);
-        entrance_queues[i]=create_queue();
-        printf("Entrance entrance queue %p initialised\n", entrance_queues[i]);
-        entrance_datas[i].entrance = entrance;
-        entrance_datas[i].entrance_queue = entrance_queues[i];
-        pthread_mutex_init(&entrance_datas[i].mutex, NULL);
-        pthread_cond_init(&entrance_datas[i].cond, NULL);
-
+        sh_entrance_data->entrance_queues[i] = create_queue();
+        sh_entrance_data->entrances[i] = entrance;
+        pthread_mutex_init(&sh_entrance_data->mutexs[i], NULL);
+        pthread_cond_init(&sh_entrance_data->conds[i], NULL);
         
         boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
@@ -371,7 +371,7 @@ int main() {
     
     printf("=================.\n");
     printf("Start Car Thread.\n");
-    pthread_create(&car_generation_thread, NULL, generate_cars, (void*) entrance_queues);
+    pthread_create(&car_generation_thread, NULL, generate_cars, (void*) sh_entrance_data);
 
     pthread_join(car_generation_thread, NULL);
     printf("=================.\n");
