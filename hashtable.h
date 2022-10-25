@@ -1,15 +1,17 @@
 #pragma once
+#include <stdbool.h>
+#include <stdlib.h>
 
 // An item inserted into a hash table.
 // As hash collisions can occur, multiple items can exist in one bucket.
 // Therefore, each bucket is a linked list of items that hashes to that bucket.
-typedef struct item {
+typedef struct item item_t;
+struct item {
     char *key;
     int value;
+    char *plate;
     item_t *next;
-
-} item_t;
-
+};
 
 // A hash table mapping a string to an integer.
 typedef struct htab {
@@ -17,7 +19,6 @@ typedef struct htab {
     size_t size;
 
 } htab_t;
-
 
 void item_print(item_t *i);
 bool htab_init(htab_t *h, size_t n);
