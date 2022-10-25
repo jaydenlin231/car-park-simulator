@@ -11,6 +11,11 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <semaphore.h>
+#include <errno.h>
+#include <string.h>
+#include <inttypes.h>
+
 
 #include "carpark_types.h"
 #include "hashtable.h"
@@ -84,13 +89,15 @@ void *handle_boom_gate(void *data) {
     return NULL;
 }
 
-void *wait_sim_close(void *data) {
-    shared_memory_t *shm = (shared_memory_t *)data;
+void *wait_sim_close(void *data)
+{
+    // shared_memory_t *shm = (shared_memory_t *)data;
     printf("Monitor Thread Waiting for simulation to close\n");
     sem_wait(simulation_ended_sem);
     printf("Monitor notified simulation closed\n");
 
     sem_post(manager_ended_sem);
+    return NULL;
 }
 
 htab_t import_htable(char fname[]) {
@@ -155,7 +162,7 @@ int main() {
         get_entrance(&shm, i, &entrance);
         boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
-        printf("Entrance %d Boom Gate %p\n", i, &entrance->boom_gate);
+        printf("Entrance %ld Boom Gate %p\n",i, &entrance->boom_gate);
         pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
     }
 

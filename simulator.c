@@ -10,9 +10,14 @@
 #include <time.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <string.h>
+#include <inttypes.h>
+
 
 #include "carpark_types.h"
 #include "shared_memory.h"
+#include "queue.h"
+#include "hashtable.h"
 
 #define SHM_NAME "/PARKING"
 #define SHM_SZ sizeof(data_t)
@@ -35,6 +40,16 @@ sem_t *manager_ended_sem;
 // TODO: Remove testing stub
 int ready_threads = 0;
 
+typedef struct entrance_data
+{
+    entrance_t* entrance;
+    queue_t* entrance_queue;
+    pthread_mutex_t mutex;
+    // pthread_cond_t entrance_cond;
+    pthread_cond_t cond;
+
+}entrance_data_t;
+
 // TODO: Remove testing stub
 void *test_thread(void *data) {
     pthread_mutex_lock(&initialisation_mutex);
@@ -44,6 +59,7 @@ void *test_thread(void *data) {
     ready_threads++;
     pthread_cond_signal(&initialisation_cond);
     pthread_mutex_unlock(&initialisation_mutex);
+    return NULL;
 }
 
 void *wait_manager_close(void *data)
@@ -51,6 +67,7 @@ void *wait_manager_close(void *data)
     printf("Manager monitor thread waiting.\n");
     sem_wait(manager_ended_sem);
     printf("Manager monitor thread Woke\n");
+    return NULL;
 }
 
 void *control_boom_gate(boom_gate_t *boom_gate, char update_status) {
@@ -68,6 +85,7 @@ void *control_boom_gate(boom_gate_t *boom_gate, char update_status) {
             pthread_mutex_unlock(&boom_gate->mutex);
             pthread_cond_broadcast(&boom_gate->cond);
         }
+    return NULL;
 }
 
 
@@ -80,7 +98,7 @@ void *handle_boom_gate(void *data) {
     ready_threads++;
     pthread_cond_broadcast(&initialisation_cond);
     pthread_mutex_unlock(&initialisation_mutex);
-    int num = 0;
+    // int num = 0;
     int test = 0;
     while (true) {
         printf("\tBoom Gate %p Monitor Loop ran %d times.\n",boom_gate, ++test);
@@ -118,12 +136,115 @@ void *handle_boom_gate(void *data) {
     return NULL;
 }
 
-// TODO: Remove testing stub
 void *generate_cars(void *arg) {
-    for (size_t i = 0; i < NUM_OF_CARS; i++) {
-        printf("Generating Car %i ...\n", i);
-        sleep(2);
+    queue_t **entrance_queues = (queue_t **) arg;
+
+    pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
+    int bool_for_checking = 0;
+    char file_location[] = "plates.txt";
+    // printf("%s\n", file_location );
+    FILE *f = fopen(file_location, "r");
+    if (!f)
+    {
+        perror ("File not exising");
+        return (NULL);
+        bool_for_checking = 1; 
     }
+    int total_plates;
+   
+
+    //create two d array  //int 100 is 100 plates in .txt
+    char ** plates = calloc (100, sizeof(char *));
+    // int plates_len; 
+    //each elements in 2d array allocate memory into it
+    for(size_t i = 0; i < 100; i++ )
+    {
+        char * each_plateSize = calloc(6, sizeof(char));
+        plates[i] = each_plateSize;
+    }
+    
+    int line = 0; 
+    char buffer[100];
+
+    while((line< 100) && (fscanf(f, "%s", buffer) != EOF))
+    {
+        // printf("Read plate %s\n", buffer);
+    
+        strcpy(plates[line], buffer);
+        line++;
+    }
+    total_plates = line; 
+    // printf("%d\n", total_plates);
+    // plates_len = line;
+    if (bool_for_checking != 0)
+    {
+        printf("Couldn't import valid plates!\n");
+        return(NULL);
+    }
+    bool_for_checking = 0; 
+
+    while(true)
+    {
+        sleep(1);
+        // char result;
+        pthread_mutex_lock(&lock_rand_num);
+        int halfChance = rand() % 2;
+        pthread_mutex_unlock(&lock_rand_num);
+
+        char six_d_plate[7];
+        if(halfChance == 1)
+        {
+            pthread_mutex_lock(&lock_rand_num);
+
+            int index;
+            index = (rand() % ((total_plates - 1) + 0 - 1)) +0;
+            pthread_mutex_unlock(&lock_rand_num);
+            for (size_t i = 0; i < 3; i++)
+            {
+                six_d_plate[i] = plates[index][i];
+            }
+
+            for (size_t i = 3; i < 6; i++)
+            {
+                six_d_plate[i] = plates[index][i];
+            }
+            for (size_t i = 6; i<7; i++ )
+            {
+                six_d_plate[i] = '\0';
+            }
+        }
+        else
+        {
+            pthread_mutex_lock(&lock_rand_num);
+            for (int i=0; i<3;i++){
+                six_d_plate[i] = '0' + rand() % 9;
+                six_d_plate[i+3] = 'A' + rand() % 26;
+            }
+            for (size_t i = 6; i<7; i++ )
+            {
+                six_d_plate[i] = '\0';
+            }
+            pthread_mutex_unlock(&lock_rand_num);
+        }
+        int rand_entrance = rand() % 5;
+        printf("%s queued to %p: queue #%d \n", six_d_plate, &entrance_queues[rand_entrance], rand_entrance);
+
+        char *plate_string = malloc(sizeof(char) * 7);
+        // plate_string[6] = '\0';
+        strcpy(plate_string, six_d_plate);
+        enqueue(entrance_queues[rand_entrance], plate_string);
+
+        for(int i = 0; i < ENTRANCES; i++){
+            print_queue(entrance_queues[i]);
+        }
+        printf("\n");
+
+    }
+    
+
+    return(NULL);
+
+   
 }
 
 
@@ -177,14 +298,25 @@ int main() {
     pthread_t monitor_sim_thread;
 
     pthread_t entrance_threads[ENTRANCES];
-    pthread_t exit_threads[EXITS];
-    pthread_t level_threads[LEVELS];
+    // pthread_t exit_threads[EXITS];
+    // pthread_t level_threads[LEVELS];
+
+    queue_t* entrance_queues[ENTRANCES];
+    entrance_data_t entrance_datas[ENTRANCES];
     
     printf("Init Entrance threads.\n");
 
     entrance_t *entrance = malloc(sizeof(entrance_t));
     for (int i = 0; i < ENTRANCES; i++) {
         get_entrance(&shm, i, &entrance);
+        entrance_queues[i]=create_queue();
+        printf("Entrance entrance queue %p initialised\n", entrance_queues[i]);
+        entrance_datas[i].entrance = entrance;
+        entrance_datas[i].entrance_queue = entrance_queues[i];
+        pthread_mutex_init(&entrance_datas[i].mutex, NULL);
+        pthread_cond_init(&entrance_datas[i].cond, NULL);
+
+        
         boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
         pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
@@ -239,7 +371,7 @@ int main() {
     
     printf("=================.\n");
     printf("Start Car Thread.\n");
-    pthread_create(&car_generation_thread, NULL, generate_cars, NULL);
+    pthread_create(&car_generation_thread, NULL, generate_cars, (void*) entrance_queues);
 
     pthread_join(car_generation_thread, NULL);
     printf("=================.\n");

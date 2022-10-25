@@ -13,3 +13,10 @@ typedef struct queue {
 	queue_node_t *front;
 	queue_node_t *rear;
 }queue_t;
+
+queue_node_t *new_node(char *plate);
+queue_t  *create_queue();
+void enqueue(queue_t  * q, char *plate);
+char *dequeue(queue_t  * q);
+bool is_empty(queue_t *q);
+void print_queue(queue_t *q);

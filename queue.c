@@ -78,26 +78,26 @@ void print_queue(queue_t *q) {
 }
 
 // Driver Program to test above functions
-int main() {
-	queue_t  * q = create_queue();
-    print_queue(q);
-	enqueue(q, "AAAAAA");
-	enqueue(q, "BBBBBB");
-	char *test1 = dequeue(q);
-	char *test2 = dequeue(q);
-	enqueue(q, "CCCCCC");
-	enqueue(q, "DDDDDD");
-	enqueue(q, "EEEEEE");
-	char *test3 = dequeue(q);
-	printf("Dequeue 1 : %s \n", test1);
-	printf("Dequeue 2 : %s \n", test2);
-	printf("Dequeue 3 : %s \n", test3);
-	printf("Queue Front : %s \n", q->front->plate);
-	printf("Queue Rear : %s \n", q->rear->plate);
-	char *test4 = dequeue(q);
-	char *test5 = dequeue(q);
-    printf("Dequeue 4 : %s \n", test4);
-	printf("Dequeue 5 : %s \n", test5);
-    print_queue(q);
-	return 0;
-}
+// int main() {
+// 	queue_t  * q = create_queue();
+//     print_queue(q);
+// 	enqueue(q, "AAAAAA");
+// 	enqueue(q, "BBBBBB");
+// 	char *test1 = dequeue(q);
+// 	char *test2 = dequeue(q);
+// 	enqueue(q, "CCCCCC");
+// 	enqueue(q, "DDDDDD");
+// 	enqueue(q, "EEEEEE");
+// 	char *test3 = dequeue(q);
+// 	printf("Dequeue 1 : %s \n", test1);
+// 	printf("Dequeue 2 : %s \n", test2);
+// 	printf("Dequeue 3 : %s \n", test3);
+// 	printf("Queue Front : %s \n", q->front->plate);
+// 	printf("Queue Rear : %s \n", q->rear->plate);
+// 	char *test4 = dequeue(q);
+// 	char *test5 = dequeue(q);
+//     printf("Dequeue 4 : %s \n", test4);
+// 	printf("Dequeue 5 : %s \n", test5);
+//     print_queue(q);
+// 	return 0;
+// }
