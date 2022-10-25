@@ -136,24 +136,8 @@ void *handle_boom_gate(void *data) {
     return NULL;
 }
 
-// TODO: Remove testing stub
 void *generate_cars(void *arg) {
-    // for (size_t i = 0; i < NUM_OF_CARS; i++) {
-    //     printf("Generating Car %li ...\n", i);
-    //     sleep(2);
-    // }
-    // return NULL;
-    entrance_data_t *entrance_queues = (entrance_data_t*) arg;
-    char plate_string[7];
-    plate_string[6] = '\0';
-
-    // int sleep_time;
-    int entrance;
-    int queued_up;
-    int start;
-    int i;
-
-    char six_d_plate[7];
+    queue_t **entrance_queues = (queue_t **) arg;
 
     pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
     int bool_for_checking = 0;
@@ -201,12 +185,13 @@ void *generate_cars(void *arg) {
 
     while(true)
     {
-        queued_up = false;
         sleep(1);
         // char result;
         pthread_mutex_lock(&lock_rand_num);
         int halfChance = rand() % 2;
         pthread_mutex_unlock(&lock_rand_num);
+
+        char six_d_plate[7];
         if(halfChance == 1)
         {
             pthread_mutex_lock(&lock_rand_num);
@@ -241,47 +226,18 @@ void *generate_cars(void *arg) {
             }
             pthread_mutex_unlock(&lock_rand_num);
         }
-        
-        entrance = rand()%5;
-        i = entrance; 
-        enqueue(entrance_queues[entrance].entrance_queue, six_d_plate);
-        
-        start = entrance;
-        if (i + 1 == ENTRANCES)
-        {
-            i = 0;
+        int rand_entrance = rand() % 5;
+        printf("%s queued to %p: queue #%d \n", six_d_plate, &entrance_queues[rand_entrance], rand_entrance);
 
-        }
-        else
-        {
-            i =i + 1;
+        char *plate_string = malloc(sizeof(char) * 7);
+        // plate_string[6] = '\0';
+        strcpy(plate_string, six_d_plate);
+        enqueue(entrance_queues[rand_entrance], plate_string);
 
+        for(int i = 0; i < ENTRANCES; i++){
+            print_queue(entrance_queues[i]);
         }
-            while(i != start)
-            {
-                enqueue(entrance_queues[i].entrance_queue, six_d_plate);
-                if(i+1 ==ENTRANCES)
-                {
-                    i=0;
-                }
-                else{
-                    i++;
-                }
-                queued_up = true;
-                break;
-                
-                
-            }
-        queued_up = true;
-        
-        if (queued_up)
-        {
-            memcpy(plate_string, six_d_plate, 6);
-             printf("Generated plate: %s for level %d\n", plate_string, i);
-             print_queue(entrance_queues[0].entrance_queue);
-            // if (amount_queued(&entrance_queues[i].queue) == 1)
-            pthread_cond_signal(&entrance_queues[i].cond);
-        }
+        printf("\n");
 
     }
     
@@ -415,7 +371,7 @@ int main() {
     
     printf("=================.\n");
     printf("Start Car Thread.\n");
-    pthread_create(&car_generation_thread, NULL, generate_cars, (void*)entrance_datas);
+    pthread_create(&car_generation_thread, NULL, generate_cars, (void*) entrance_queues);
 
     pthread_join(car_generation_thread, NULL);
     printf("=================.\n");
