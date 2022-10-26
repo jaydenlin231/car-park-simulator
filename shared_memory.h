@@ -1,10 +1,11 @@
 #pragma once
-#include "carpark_types.h"
+#include "carpark_details.h"
 
 /**
  * Shared data block
  */
-typedef struct data {
+typedef struct data
+{
     // Entrances
     entrance_t entrances[ENTRANCES];
 
@@ -19,7 +20,8 @@ typedef struct data {
 /**
  * A shared memory control structure.
  */
-typedef struct shared_memory {
+typedef struct shared_memory
+{
     /// The name of the shared memory object.
     const char *name;
 

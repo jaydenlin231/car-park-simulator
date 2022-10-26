@@ -21,41 +21,50 @@ pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;
 #define MEDIAN_WINDOW 5
 #define TEMPCHANGE_WINDOW 30
 
-struct boomgate {
+struct boomgate
+{
     pthread_mutex_t m;
     pthread_cond_t c;
     char s;
 };
-struct parkingsign {
+struct parkingsign
+{
     pthread_mutex_t m;
     pthread_cond_t c;
     char display;
 };
 
-struct tempnode {
+struct tempnode
+{
     int temperature;
     struct tempnode *next;
 };
 
-struct tempnode *deletenodes(struct tempnode *templist, int after) {
-    if (templist->next) {
+struct tempnode *deletenodes(struct tempnode *templist, int after)
+{
+    if (templist->next)
+    {
         templist->next = deletenodes(templist->next, after - 1);
     }
-    if (after <= 0) {
+    if (after <= 0)
+    {
         free(templist);
         return NULL;
     }
     return templist;
 }
-int compare(const void *first, const void *second) {
+int compare(const void *first, const void *second)
+{
     return *((const int *)first) - *((const int *)second);
 }
 
-void tempmonitor(int level) {
+void tempmonitor(int level)
+{
     struct tempnode *templist = NULL, *newtemp, *medianlist = NULL, *oldesttemp;
     int count, addr, temp, mediantemp, hightemps;
 
-    for (;;) {
+    for (;;)
+    {
         // Calculate address of temperature sensor
         addr = 0150 * level + 2496;
         temp = *((int16_t *)(shm + addr));
@@ -71,14 +80,17 @@ void tempmonitor(int level) {
 
         // Count nodes
         count = 0;
-        for (struct tempnode *t = templist; t != NULL; t = t->next) {
+        for (struct tempnode *t = templist; t != NULL; t = t->next)
+        {
             count++;
         }
 
-        if (count == MEDIAN_WINDOW) {  // Temperatures are only counted once we have 5 samples
+        if (count == MEDIAN_WINDOW)
+        { // Temperatures are only counted once we have 5 samples
             int *sorttemp = malloc(sizeof(int) * MEDIAN_WINDOW);
             count = 0;
-            for (struct tempnode *t = templist; t != NULL; t = t->next) {
+            for (struct tempnode *t = templist; t != NULL; t = t->next)
+            {
                 sorttemp[count++] = t->temperature;
             }
             qsort(sorttemp, MEDIAN_WINDOW, sizeof(int), compare);
@@ -97,15 +109,18 @@ void tempmonitor(int level) {
             count = 0;
             hightemps = 0;
 
-            for (struct tempnode *t = medianlist; t != NULL; t = t->next) {
+            for (struct tempnode *t = medianlist; t != NULL; t = t->next)
+            {
                 // Temperatures of 58 degrees and higher are a concern
-                if (t->temperature >= 58) hightemps++;
+                if (t->temperature >= 58)
+                    hightemps++;
                 // Store the oldest temperature for rate-of-rise detection
                 oldesttemp = t;
                 count++;
             }
 
-            if (count == TEMPCHANGE_WINDOW) {
+            if (count == TEMPCHANGE_WINDOW)
+            {
                 // If 90% of the last 30 temperatures are >= 58 degrees,
                 // this is considered a high temperature. Raise the alarm
                 if (hightemps >= TEMPCHANGE_WINDOW * 0.9)
@@ -123,32 +138,40 @@ void tempmonitor(int level) {
     }
 }
 
-void *openboomgate(void *arg) {
+void *openboomgate(void *arg)
+{
     struct boomgate *bg = arg;
     pthread_mutex_lock(&bg->m);
-    for (;;) {
-        if (bg->s == 'C') {
+    for (;;)
+    {
+        if (bg->s == 'C')
+        {
             bg->s = 'R';
             pthread_cond_broadcast(&bg->c);
         }
-        if (bg->s == 'O') {
+        if (bg->s == 'O')
+        {
         }
         pthread_cond_wait(&bg->c, &bg->m);
     }
     pthread_mutex_unlock(&bg->m);
 }
 
-int main() {
+int main()
+{
     shm_fd = shm_open("PARKING", O_RDWR, 0);
     shm = (volatile void *)mmap(0, 2920, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
     pthread_t *threads = malloc(sizeof(pthread_t) * LEVELS);
 
-    for (int i = 0; i < LEVELS; i++) {
+    for (int i = 0; i < LEVELS; i++)
+    {
         pthread_create(threads + i, NULL, (void *(*)(void *))tempmonitor, (void *)i);
     }
-    for (;;) {
-        if (alarm_active) {
+    for (;;)
+    {
+        if (alarm_active)
+        {
             goto emergency_mode;
         }
         usleep(1000);
@@ -159,7 +182,8 @@ emergency_mode:
 
     // Handle the alarm system and open boom gates
     // Activate alarms on all levels
-    for (int i = 0; i < LEVELS; i++) {
+    for (int i = 0; i < LEVELS; i++)
+    {
         int addr = 0150 * i + 2498;
         char *alarm_trigger = (char *)shm + addr;
         *alarm_trigger = 1;
@@ -167,22 +191,27 @@ emergency_mode:
 
     // Open up all boom gates
     pthread_t *boomgatethreads = malloc(sizeof(pthread_t) * (ENTRANCES + EXITS));
-    for (int i = 0; i < ENTRANCES; i++) {
+    for (int i = 0; i < ENTRANCES; i++)
+    {
         int addr = 288 * i + 96;
         volatile struct boomgate *bg = shm + addr;
         pthread_create(boomgatethreads + i, NULL, openboomgate, bg);
     }
-    for (int i = 0; i < EXITS; i++) {
+    for (int i = 0; i < EXITS; i++)
+    {
         int addr = 192 * i + 1536;
         volatile struct boomgate *bg = shm + addr;
         pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate, bg);
     }
 
     // Show evacuation message on an endless loop
-    for (;;) {
+    for (;;)
+    {
         char *evacmessage = "EVACUATE ";
-        for (char *p = evacmessage; *p != '\0'; p++) {
-            for (int i = 0; i < ENTRANCES; i++) {
+        for (char *p = evacmessage; *p != '\0'; p++)
+        {
+            for (int i = 0; i < ENTRANCES; i++)
+            {
                 int addr = 288 * i + 192;
                 volatile struct parkingsign *sign = shm + addr;
                 pthread_mutex_lock(&sign->m);
@@ -190,11 +219,12 @@ emergency_mode:
                 pthread_cond_broadcast(&sign->c);
                 pthread_mutex_unlock(&sign->m);
             }
-            sleep(2);
+            msleep(2);
         }
     }
 
-    for (int i = 0; i < LEVELS; i++) {
+    for (int i = 0; i < LEVELS; i++)
+    {
         pthread_join(threads[i], NULL);
     }
 
