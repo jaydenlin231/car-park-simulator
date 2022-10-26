@@ -1,21 +1,18 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ipc.h>
 #include <sys/mman.h>
 #include <sys/shm.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
-#include <semaphore.h>
-#include <errno.h>
-#include <string.h>
-#include <inttypes.h>
-
 
 #include "carpark_types.h"
 #include "hashtable.h"
@@ -89,8 +86,7 @@ void *handle_boom_gate(void *data) {
     return NULL;
 }
 
-void *wait_sim_close(void *data)
-{
+void *wait_sim_close(void *data) {
     // shared_memory_t *shm = (shared_memory_t *)data;
     printf("Monitor Thread Waiting for simulation to close\n");
     sem_wait(simulation_ended_sem);
@@ -124,7 +120,7 @@ htab_t import_htable(char fname[]) {
             printf("Duplicated item in htable\n");
             continue;
         }
-        if (!htab_add(&htable, plate_copy, plates_quantity)) {
+        if (!htab_add(&htable, plate_copy)) {
             printf("Failed to add item into htable\n");
         }
     }
@@ -162,7 +158,7 @@ int main() {
         get_entrance(&shm, i, &entrance);
         boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
-        printf("Entrance %ld Boom Gate %p\n",i, &entrance->boom_gate);
+        printf("Entrance %ld Boom Gate %p\n", i, &entrance->boom_gate);
         pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
     }
 
