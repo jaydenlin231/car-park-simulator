@@ -20,6 +20,8 @@
 #define MAX_LINE_LENGTH 7
 #define MAX_IMPORTED_PLATES 100
 
+// gcc -o test test.c hashtable.c -lm
+
 /* msleep(): Sleep for the requested number of milliseconds. */
 int msleep(long msec) {
     struct timespec ts;
@@ -81,29 +83,50 @@ long double get_time() {
 
 void start_time(htab_t* h, char* s) {
     item_t* item = htab_find(h, s);
-    item->entry_time = get_time();
-    item_print(item);
+    if (item != NULL) {
+        item->entry_time = get_time();
+        item_print(item);
+    } else {
+        printf("Plate not found in hastable\n");
+    }
 }
 
 void calc_bill(htab_t* h, char* s) {
     item_t* item = htab_find(h, s);
-    item->exit_time = get_time();
-    long double delta_t = item->exit_time - item->entry_time;
-    double rounded = floorf(delta_t * 10000) / 10000;
-    printf("%lf\n", rounded);
-    item->cost = (rounded / 0.001) * 0.05;
-    item_print(item);
+    if (item != NULL) {
+        long double exit_time = get_time();
+        long double delta_time = exit_time - item->entry_time;
+        double rounded = floorf(delta_time * 1000) / 1000;
+        printf("parked for %.3lf seconds\n", rounded);
+        double bill = rounded * 50;
+
+        // Write to billing.txt file
+        FILE* fp;
+        fp = fopen("billing.txt", "a");
+        if (!fprintf(fp, "%s $%.2lf\n", item->key, bill)) {
+            printf("Error writing\n");
+        }
+        fclose(fp);
+        item->entry_time = 0;
+    } else {
+        printf("Plate not found in hastable\n");
+    }
 }
 
 int main() {
-    char* plate = "080UPF";
+    char* plate = "168BUT";
     int directed_level = 1;
     htab_t hashtable = import_htable(PLATE_FILE);
-    // htab_print(&hashtable);
-    printf("%s has came through boomgate and is directed to go to %d.\n\n", plate, directed_level);
+    printf("%s has came through boomgate and is directed to go to %d.\n", plate, directed_level);
+    // As the car goes through entrance start_time
     start_time(&hashtable, plate);
-    msleep(5);
+
+    // Random time the car parks inside the parking
+    msleep(111);
+
+    // As the car leaves exit call calc_bill
     calc_bill(&hashtable, plate);
 
+    // htab_print(&hashtable);
     return 0;
 }

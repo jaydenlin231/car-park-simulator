@@ -11,8 +11,6 @@ struct item {
     int directed_lvl;
     int actual_lvl;
     long double entry_time;
-    long double exit_time;
-    double cost;
     item_t *next;
 };
 

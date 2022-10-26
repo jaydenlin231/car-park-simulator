@@ -6,7 +6,7 @@
 #include <string.h>
 
 void item_print(item_t *i) {
-    printf("%s - Entry time: %Lf, Bill: $%lf\n", i->key, i->entry_time, i->cost);
+    printf("%s- directed level: %d, actual level: %d\n", i->key, i->directed_lvl, i->actual_lvl);
 }
 
 // Initialise a new hash table with n buckets.
