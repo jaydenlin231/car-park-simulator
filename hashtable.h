@@ -8,8 +8,11 @@
 typedef struct item item_t;
 struct item {
     char *key;
-    int value;
-    char *plate;
+    int directed_lvl;
+    int actual_lvl;
+    long double entry_time;
+    long double exit_time;
+    double cost;
     item_t *next;
 };
 
@@ -26,7 +29,7 @@ size_t djb_hash(char *s);
 size_t htab_index(htab_t *h, char *key);
 item_t *htab_bucket(htab_t *h, char *key);
 item_t *htab_find(htab_t *h, char *key);
-bool htab_add(htab_t *h, char *key, int value);
+bool htab_add(htab_t *h, char *key);
 void htab_print(htab_t *h);
 void htab_delete(htab_t *h, char *key);
 void htab_destroy(htab_t *h);

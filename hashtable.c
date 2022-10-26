@@ -6,7 +6,7 @@
 #include <string.h>
 
 void item_print(item_t *i) {
-    printf("key=%s value=%d key address=%p", i->key, i->value, &i->key);
+    printf("%s - Entry time: %Lf, Bill: $%lf\n", i->key, i->entry_time, i->cost);
 }
 
 // Initialise a new hash table with n buckets.
@@ -57,7 +57,7 @@ item_t *htab_find(htab_t *h, char *key) {
 // pre: htab_find(h, key) == NULL
 // post: (return == false AND allocation of new item failed)
 //       OR (htab_find(h, key) != NULL)
-bool htab_add(htab_t *h, char *key, int value) {
+bool htab_add(htab_t *h, char *key) {
     // allocate new item
     item_t *newhead = (item_t *)malloc(sizeof(item_t));
     if (newhead == NULL) {
@@ -65,7 +65,6 @@ bool htab_add(htab_t *h, char *key, int value) {
     }
 
     newhead->key = key;
-    newhead->value = value;
 
     size_t bucket = htab_index(h, key);
     newhead->next = h->buckets[bucket];
