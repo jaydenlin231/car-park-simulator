@@ -39,6 +39,43 @@ int ready_threads = 0;
 sem_t *simulation_ended_sem;
 sem_t *manager_ended_sem;
 
+void *monitor_entrance(void *data) {
+    entrance_t *entrance = (entrance_t *)data;
+    boom_gate_t *boom_gate = &entrance->boom_gate;
+    info_sign_t *info_sign = &entrance->info_sign;
+    LPR_t *LPR = &entrance->lpr;
+
+    while (true) {
+        if(pthread_mutex_lock(&LPR->mutex)!=0){
+            perror("pthread_mutex_lock(&LPR->mutex)");
+            exit(1);
+        };
+        while (LPR->plate[0] == NULL) {
+            printf("\t\tCond Wait LPR not NULL, currently: %s\n", LPR->plate);
+            pthread_cond_wait(&LPR->cond, &LPR->mutex);
+        }
+        // if(pthread_mutex_unlock(&LPR->mutex)!=0){
+        //     perror("pthread_mutex_unlock(&LPR->mutex)");
+        //     exit(1);
+        // };
+        printf("%s is at the LPR\n", LPR->plate);
+
+        // pthread_mutex_lock(&LPR->mutex);
+        for (int i = 0; i < 6; i++) {
+            LPR->plate[i] = NULL;
+        }
+
+        pthread_cond_broadcast(&LPR->cond);
+        pthread_mutex_unlock(&LPR->mutex);
+    }
+
+    // Wait for shm->entrances->LPR->plate to be !NULL
+
+    // htable_find(&hashtable, shm->entrances->LPR->plate);
+    // if (htable_find == NUll) return
+    // else control_boomgate(boomgate, Raise)
+}
+
 void *handle_boom_gate(void *data) {
     boom_gate_t *boom_gate = (boom_gate_t *)data;
 
@@ -152,6 +189,7 @@ int main() {
     }
 
     printf("Init Entrance threads.\n");
+    pthread_t entrance_BG_threads[ENTRANCES];
     pthread_t entrance_threads[ENTRANCES];
     entrance_t *entrance;
     for (size_t i = 0; i < ENTRANCES; i++) {
@@ -159,7 +197,8 @@ int main() {
         boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
         printf("Entrance %ld Boom Gate %p\n", i, &entrance->boom_gate);
-        pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
+        pthread_create(&entrance_BG_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
+        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)entrance);
     }
 
     pthread_mutex_lock(&initialisation_mutex);

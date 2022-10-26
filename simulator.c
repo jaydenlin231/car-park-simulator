@@ -98,8 +98,8 @@ void *handle_entrance_queue(void *data){
     sem_t *entrance_LPR_free = &entrance_data->entrance_LPR_free;
 
     LPR_t *entrance_LPR = &entrance->lpr;
-    pthread_mutex_t *LPR_mutex = &entrance->lpr;
-    pthread_cond_t *LPR_cond = &entrance->lpr;
+    pthread_mutex_t *LPR_mutex = &entrance_LPR->mutex;
+    pthread_cond_t *LPR_cond = &entrance_LPR->cond;
 
 
     pthread_mutex_lock(&initialisation_mutex);
@@ -108,9 +108,20 @@ void *handle_entrance_queue(void *data){
     pthread_mutex_unlock(&initialisation_mutex);
 
     while (true) {
-        printf("\tManage entrance loop ran\n");
+        printf("\n\tManage entrance loop ran\n");
 
-        sem_wait(entrance_LPR_free);
+        if(pthread_mutex_lock(&entrance_LPR->mutex)!=0){
+            perror("pthread_mutex_lock(&LPR->mutex)");
+            exit(1);
+        };
+        while (entrance_LPR->plate[0] != NULL) {
+            printf("\t\tCond Wait LPR NULL, currently: %s\n", entrance_LPR->plate);
+            pthread_cond_wait(&entrance_LPR->cond, &entrance_LPR->mutex);
+        }
+        if(pthread_mutex_unlock(&entrance_LPR->mutex)!=0){
+            perror("pthread_mutex_lock(&LPR->mutex)");
+            exit(1);
+        };
         
         printf("\t\tQueue:%p entrance_LPR_free\n", entrance_queue);
 
@@ -122,9 +133,9 @@ void *handle_entrance_queue(void *data){
             printf("\t\tQueue:%p COND WAIT queue not empty, current is_empty status:%d\n", entrance_queue, is_empty(entrance_queue));
             pthread_cond_wait(cond, queue_mutex);
         }
-        pthread_mutex_unlock(queue_mutex);
+        // pthread_mutex_unlock(queue_mutex);
 
-        pthread_mutex_lock(queue_mutex);
+        // pthread_mutex_lock(queue_mutex);
         char *first_plate_in_queue = dequeue(entrance_queue);
         printf("Dequeue from Queue:%p - %s\n", entrance_queue, first_plate_in_queue);
         pthread_mutex_unlock(queue_mutex);
@@ -138,8 +149,8 @@ void *handle_entrance_queue(void *data){
             entrance_LPR->plate[i] = first_plate_in_queue[i];
         }
         pthread_cond_broadcast(&entrance_LPR->cond);
-        pthread_mutex_lock(queue_mutex);
-
+        pthread_mutex_unlock(&entrance_LPR->mutex);
+        printf("\t\tEntrance LPR set as: %s\n", entrance_LPR->plate);
     }
 
 }
@@ -425,16 +436,16 @@ int main() {
 
     sem_wait(manager_ready_sem);
 
-    for (int i = 0; i < ENTRANCES; i++) {
-        if(i % 2 == 1){
-            printf("Instructing Entrance %d\n", i);
-            get_entrance(&shm, i, &entrance);
-            boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
-            boom_gate = &entrance->boom_gate;
-            control_boom_gate(boom_gate, BG_RAISING);
-            sleep(2);
-        }
-    }
+    // for (int i = 0; i < ENTRANCES; i++) {
+    //     if(i % 2 == 1){
+    //         printf("Instructing Entrance %d\n", i);
+    //         get_entrance(&shm, i, &entrance);
+    //         boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
+    //         boom_gate = &entrance->boom_gate;
+    //         control_boom_gate(boom_gate, BG_RAISING);
+    //         sleep(2);
+    //     }
+    // }
     
     printf("=================.\n");
     printf("Start Car Thread.\n");
