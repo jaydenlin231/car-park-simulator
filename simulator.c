@@ -22,6 +22,8 @@
 #define SHM_NAME "/PARKING"
 #define SHM_SZ sizeof(data_t)
 
+#define SEM_SHARED 1
+
 #define SHM_EST_SEM_NAME "/SHM_ESTABLISHED"
 #define SIM_READY_SEM_NAME "/SIM_READY"
 #define SIM_END_SEM_NAME "/SIM_ENDED"
@@ -32,26 +34,21 @@
 // TODO: Remove testing stub
 #define NUM_OF_CARS 5
 
-pthread_mutex_t initialisation_mutex;
-pthread_cond_t initialisation_cond;
+static pthread_mutex_t initialisation_mutex;
+static pthread_cond_t initialisation_cond;
 
 sem_t *manager_ended_sem;
 
 // TODO: Remove testing stub
-int ready_threads = 0;
-
-// typedef struct sh_entrance_data {
-//     entrance_t *entrances[ENTRANCES];
-//     queue_t *entrance_queues[ENTRANCES];
-//     pthread_mutex_t mutexs[ENTRANCES];
-//     pthread_cond_t conds[ENTRANCES];
-// } sh_entrance_data_t;
+static int ready_threads = 0;
 
 typedef struct entrance_data {
     entrance_t *entrance;
     queue_t *entrance_queue;
-    pthread_mutex_t mutex;
+    pthread_mutex_t queue_mutex;
     pthread_cond_t cond;
+    sem_t entrance_LPR_free;
+
 } entrance_data_t;
 
 // TODO: Remove testing stub
@@ -92,21 +89,58 @@ void *control_boom_gate(boom_gate_t *boom_gate, char update_status) {
     return NULL;
 }
 
-void *handle_entrance_queue(){
+void *handle_entrance_queue(void *data){
+    entrance_data_t *entrance_data = (entrance_data_t *)data;
+    entrance_t *entrance = entrance_data->entrance;
+    queue_t *entrance_queue = entrance_data->entrance_queue;
+    pthread_mutex_t *queue_mutex = &entrance_data->queue_mutex;
+    pthread_cond_t *cond = &entrance_data->cond;
+    sem_t *entrance_LPR_free = &entrance_data->entrance_LPR_free;
+
+    LPR_t *entrance_LPR = &entrance->lpr;
+    pthread_mutex_t *LPR_mutex = &entrance->lpr;
+    pthread_cond_t *LPR_cond = &entrance->lpr;
+
 
     pthread_mutex_lock(&initialisation_mutex);
     ready_threads++;
     pthread_cond_broadcast(&initialisation_cond);
     pthread_mutex_unlock(&initialisation_mutex);
 
-    // while (true) {
-    //     pthread_mutex_lock();
+    while (true) {
+        printf("\tManage entrance loop ran\n");
+
+        sem_wait(entrance_LPR_free);
         
-    //     while (!(boom_gate->status == BG_RAISING || boom_gate->status == BG_LOWERING)) {
-    //         pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
-    //     }
-    //     pthread_mutex_unlock();
-    // }
+        printf("\t\tQueue:%p entrance_LPR_free\n", entrance_queue);
+
+        if(pthread_mutex_lock(queue_mutex) != 0){
+            exit(1);
+        };
+        // printf("Is Empty: %d\n", entrance_data->queue_is_empty);
+        while (is_empty(entrance_queue)) {
+            printf("\t\tQueue:%p COND WAIT queue not empty, current is_empty status:%d\n", entrance_queue, is_empty(entrance_queue));
+            pthread_cond_wait(cond, queue_mutex);
+        }
+        pthread_mutex_unlock(queue_mutex);
+
+        pthread_mutex_lock(queue_mutex);
+        char *first_plate_in_queue = dequeue(entrance_queue);
+        printf("Dequeue from Queue:%p - %s\n", entrance_queue, first_plate_in_queue);
+        pthread_mutex_unlock(queue_mutex);
+
+        printf("Waiting for 2ms before triggering LPR from Queue:%p with Rego:%s\n", entrance_queue, first_plate_in_queue);
+        sleep(2);
+        
+        pthread_mutex_lock(&entrance_LPR->mutex);
+        for (int i = 0; i < 6; i++){
+            /* code */
+            entrance_LPR->plate[i] = first_plate_in_queue[i];
+        }
+        pthread_cond_broadcast(&entrance_LPR->cond);
+        pthread_mutex_lock(queue_mutex);
+
+    }
 
 }
 
@@ -127,7 +161,6 @@ void *handle_boom_gate(void *data) {
         if(pthread_mutex_lock(&boom_gate->mutex)!=0){
             exit(1);
         };
-        
         while (!(boom_gate->status == BG_RAISING || boom_gate->status == BG_LOWERING)) {
             printf("\tBoom Gate %p Cond Wait BG_RAISING or BG_LOWERING. Current Status: %c.\n", boom_gate, boom_gate->status);
              if(pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex)!=0){
@@ -255,19 +288,18 @@ void *generate_cars(void *arg) {
             pthread_mutex_unlock(&lock_rand_num);
         }
         int rand_entrance = rand() % 5;
-        printf("%s queued to %p: queue #%d \n", six_d_plate, &entrance_datas[rand_entrance].entrance_queue, rand_entrance);
 
         char *plate_string = malloc(sizeof(char) * 7);
         // plate_string[6] = '\0';
         strcpy(plate_string, six_d_plate);
-        if(pthread_mutex_lock(&entrance_datas[rand_entrance].mutex)!=0){
-            perror("pthread_mutex_lock failed");
-        };
-        enqueue(entrance_datas[rand_entrance].entrance_queue, plate_string);
-        if(pthread_mutex_unlock(&entrance_datas[rand_entrance].mutex)!=0){
-            perror("pthread_mutex_unlock failed");
-        };
+        pthread_mutex_lock(&entrance_datas[rand_entrance].queue_mutex);
 
+        enqueue(entrance_datas[rand_entrance].entrance_queue, plate_string);
+        pthread_cond_broadcast(&entrance_datas[rand_entrance].cond);
+
+        pthread_mutex_unlock(&entrance_datas[rand_entrance].queue_mutex);
+
+        printf("%s queued to %p: queue #%d \n", six_d_plate, entrance_datas[rand_entrance].entrance_queue, rand_entrance);
         for(int i = 0; i < ENTRANCES; i++){
             print_queue(entrance_datas[i].entrance_queue);
         }
@@ -343,23 +375,18 @@ int main() {
 
     printf("Init Entrance threads.\n");
 
-    entrance_t *entrance = malloc(sizeof(entrance_t));
+    entrance_t *entrance;
     for (int i = 0; i < ENTRANCES; i++) {
         get_entrance(&shm, i, &entrance);
-        // sh_entrance_data->entrance_queues[i] = create_queue();
-        // sh_entrance_data->entrances[i] = entrance;
-        // pthread_mutex_init(&sh_entrance_data->mutexs[i], NULL);
-        // pthread_cond_init(&sh_entrance_data->conds[i], NULL);
-
         entrance_datas[i].entrance = entrance;
         entrance_datas[i].entrance_queue = create_queue();
-        pthread_mutex_init(&entrance_datas[i].mutex, NULL);
+        pthread_mutex_init(&entrance_datas[i].queue_mutex, NULL);
         pthread_cond_init(&entrance_datas[i].cond, NULL);
+        sem_init(&entrance_datas[i].entrance_LPR_free, SEM_SHARED, 1);
         
-        boom_gate_t* boom_gate = malloc(sizeof(boom_gate_t));
-        boom_gate = &entrance->boom_gate;
-        pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
-        pthread_create(&entrance_queue_threads[i], NULL, handle_entrance_queue, NULL);
+        boom_gate_t *boom_gate = &entrance->boom_gate;
+        pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *) boom_gate);
+        pthread_create(&entrance_queue_threads[i], NULL, handle_entrance_queue, (void *) &entrance_datas[i]);
     }
     // // exit_t *exit;
     // for (int i = 0; i < EXITS; i++) {
@@ -383,7 +410,7 @@ int main() {
     pthread_mutex_lock(&initialisation_mutex);
     int num = 0;
     // TODO: Add number of thread def?
-    while(ready_threads < (ENTRANCES)){
+    while(ready_threads < (ENTRANCES * 2)){
         pthread_cond_wait(&initialisation_cond, &initialisation_mutex);
         num ++;
         printf("Checking condition for %d times.\n", num);
