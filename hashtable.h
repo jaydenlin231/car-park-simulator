@@ -2,11 +2,14 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#define MAX_LINE_LENGTH 7
+#define MAX_IMPORTED_PLATES 100
 // An item inserted into a hash table.
 // As hash collisions can occur, multiple items can exist in one bucket.
 // Therefore, each bucket is a linked list of items that hashes to that bucket.
 typedef struct item item_t;
-struct item {
+struct item
+{
     char *key;
     int directed_lvl;
     int actual_lvl;
@@ -15,7 +18,8 @@ struct item {
 };
 
 // A hash table mapping a string to an integer.
-typedef struct htab {
+typedef struct htab
+{
     item_t **buckets;
     size_t size;
 
@@ -31,3 +35,4 @@ bool htab_add(htab_t *h, char *key);
 void htab_print(htab_t *h);
 void htab_delete(htab_t *h, char *key);
 void htab_destroy(htab_t *h);
+htab_t import_htable(char fname[]);
