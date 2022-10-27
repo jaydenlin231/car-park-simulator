@@ -10,7 +10,7 @@ typedef struct monitor_entrance
     htab_t *hashtable;
     capacity_t *capacity;
 
-} monitor_entrance_t;
+} entrance_data_t;
 
 typedef struct sim_man_sem_t
 {
@@ -22,6 +22,6 @@ void *control_boom_gate(boom_gate_t *boom_gate, char update_status);
 
 void *monitor_entrance(void *data);
 
-void *handle_boom_gate(void *data);
+// void *handle_boom_gate(void *data);
 
 void *wait_sim_close(void *data);

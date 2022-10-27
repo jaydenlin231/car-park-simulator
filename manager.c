@@ -19,6 +19,7 @@
 #include "shared_memory.h"
 #include "capacity.h"
 #include "utility.h"
+#include "manager_routines.h"
 
 #define SHM_NAME "/PARKING"
 #define SHM_SZ sizeof(data_t)
@@ -39,231 +40,6 @@ static pthread_cond_t initialisation_cond = PTHREAD_COND_INITIALIZER;
 static htab_t hashtable;
 static capacity_t capacity;
 
-// TODO: Remove testing stub
-int ready_threads = 0;
-
-sem_t *simulation_ended_sem;
-sem_t *manager_ended_sem;
-
-void *control_boom_gate(boom_gate_t *boom_gate, char update_status)
-{
-    if (update_status == BG_RAISING)
-    {
-        pthread_mutex_lock(&boom_gate->mutex);
-        printf("Instruct Boom Gate %p Raising\n", boom_gate);
-        boom_gate->status = BG_RAISING;
-        pthread_mutex_unlock(&boom_gate->mutex);
-        pthread_cond_broadcast(&boom_gate->cond);
-    }
-    else if (update_status == BG_LOWERING)
-    {
-        printf("Instruct Boom Gate Lowering\n");
-        pthread_mutex_lock(&boom_gate->mutex);
-        boom_gate->status = BG_LOWERING;
-        pthread_mutex_unlock(&boom_gate->mutex);
-        pthread_cond_broadcast(&boom_gate->cond);
-    }
-    return NULL;
-}
-
-void *monitor_entrance(void *clean_shared_memory_data)
-{
-    pthread_mutex_lock(&initialisation_mutex);
-    ready_threads++;
-    pthread_cond_broadcast(&initialisation_cond);
-    pthread_mutex_unlock(&initialisation_mutex);
-
-    entrance_t *entrance = (entrance_t *)clean_shared_memory_data;
-    boom_gate_t *boom_gate = &entrance->boom_gate;
-    info_sign_t *info_sign = &entrance->info_sign;
-    LPR_t *LPR = &entrance->lpr;
-
-    while (true)
-    {
-        if (pthread_mutex_lock(&LPR->mutex) != 0)
-        {
-            perror("pthread_mutex_lock(&LPR->mutex)");
-            exit(1);
-        };
-        while (LPR->plate[0] == NULL)
-        {
-            // printf("\t\tCond Wait LPR not NULL, currently: %s\n", LPR->plate);
-            pthread_cond_wait(&LPR->cond, &LPR->mutex);
-        }
-
-        printf("%s is at the LPR\n", LPR->plate);
-        item_t *permitted_car = htab_find(&hashtable, LPR->plate);
-        if (permitted_car != NULL)
-        {
-            printf("%s is in the permitted list\n", permitted_car->key);
-            msleep(1 * TIME_MULITIPLIER);
-            int directed_lvl = get_set_empty_spot(&capacity);
-            permitted_car->directed_lvl = directed_lvl;
-            permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
-            if (directed_lvl != NULL)
-            {
-                pthread_mutex_lock(&info_sign->mutex);
-                info_sign->display = directed_lvl + '0';
-                printf("Info sign says: %c\n", info_sign->display);
-                pthread_mutex_unlock(&info_sign->mutex);
-                printf("Directed to level: %d\n", directed_lvl);
-                print_capacity(&capacity);
-                control_boom_gate(boom_gate, BG_RAISING);
-
-                pthread_mutex_lock(&boom_gate->mutex);
-                while (!(boom_gate->status == BG_OPENED))
-                {
-                    printf("\tBoom Gate %p Cond Wait BG_OPENED. Current Status: %c.\n", boom_gate, boom_gate->status);
-                    pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
-                }
-                pthread_mutex_unlock(&boom_gate->mutex);
-
-                if (boom_gate->status == BG_OPENED)
-                {
-                    printf("Lowering Boom Gate %p...\n", boom_gate);
-                    printf("Waiting 10 ms\n");
-                    msleep(2 * TIME_MULITIPLIER);
-                    pthread_mutex_lock(&boom_gate->mutex);
-                    boom_gate->status = BG_LOWERING;
-                    printf("Boom Gate %p Lowered\n", boom_gate);
-                    pthread_mutex_unlock(&boom_gate->mutex);
-                    pthread_cond_broadcast(&boom_gate->cond);
-                }
-            }
-            else
-            {
-                printf("Carpark FULL\n");
-            }
-        }
-
-        if (pthread_mutex_unlock(&LPR->mutex) != 0)
-        {
-            perror("pthread_mutex_unlock(&LPR->mutex)");
-            exit(1);
-        };
-
-        if (pthread_mutex_lock(&LPR->mutex) != 0)
-        {
-            perror("pthread_mutex_unlock(&LPR->mutex)");
-            exit(1);
-        };
-        // Clear LPR
-        for (int i = 0; i < 6; i++)
-        {
-            LPR->plate[i] = NULL;
-        }
-        pthread_cond_broadcast(&LPR->cond);
-        pthread_mutex_unlock(&LPR->mutex);
-    }
-
-    // Wait for shm->entrances->LPR->plate to be !NULL
-
-    // htable_find(&hashtable, shm->entrances->LPR->plate);
-    // if (htable_find == NUll) return
-    // else control_boomgate(boomgate, Raise)
-}
-
-void *handle_boom_gate(void *data)
-{
-    boom_gate_t *boom_gate = (boom_gate_t *)data;
-
-    printf("Created Boom Gate %p Thread\n", boom_gate);
-
-    pthread_mutex_lock(&initialisation_mutex);
-    ready_threads++;
-    pthread_mutex_unlock(&initialisation_mutex);
-    pthread_cond_signal(&initialisation_cond);
-
-    printf("Begin Boom Gate %p Thread\n", boom_gate);
-    int test = 0;
-    while (true)
-    {
-        printf("\tBoom Gate %p Monitor Loop ran %d times.\n", boom_gate, ++test);
-
-        pthread_mutex_lock(&boom_gate->mutex);
-        while (!(boom_gate->status == BG_OPENED))
-        {
-            printf("\tBoom Gate %p Cond Wait BG_OPENED. Current Status: %c.\n", boom_gate, boom_gate->status);
-            pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
-        }
-        pthread_mutex_unlock(&boom_gate->mutex);
-
-        if (boom_gate->status == BG_OPENED)
-        {
-            printf("Lowering Boom Gate %p...\n", boom_gate);
-            printf("Waiting 10 ms\n");
-            msleep(1 * TIME_MULITIPLIER);
-            pthread_mutex_lock(&boom_gate->mutex);
-            boom_gate->status = BG_LOWERING;
-            printf("Boom Gate %p Lowered\n", boom_gate);
-            pthread_mutex_unlock(&boom_gate->mutex);
-            pthread_cond_broadcast(&boom_gate->cond);
-        }
-        // else if (boom_gate->status == BG_CLOSED)
-        // {
-        //     printf("Lowering Boom Gate %p...\n", boom_gate);
-        //     printf("Waiting 10 ms\n");
-        //     msleep(2 * TIME_MULITIPLIER);
-        //     pthread_mutex_lock(&boom_gate->mutex);
-        //     boom_gate->status = BG_RAISING;
-        //     pthread_cond_broadcast(&boom_gate->cond);
-        //     printf("Boom Gate %p Lowered\n", boom_gate);
-        //     pthread_mutex_unlock(&boom_gate->mutex);
-        // }
-    }
-    // Might not be needed
-    printf("Boom Gate Quit before broadcast %p...\n", boom_gate);
-    return NULL;
-}
-
-void *wait_sim_close(void *data)
-{
-    // shared_memory_t *shm = (shared_memory_t *)data;
-    printf("Monitor Thread Waiting for simulation to close\n");
-    sem_wait(simulation_ended_sem);
-    printf("Monitor notified simulation closed\n");
-
-    sem_post(manager_ended_sem);
-    return NULL;
-}
-
-htab_t import_htable(char fname[])
-{
-    htab_t htable;
-    FILE *textfile;
-    char line[MAX_LINE_LENGTH];
-    int plates_quantity = 0;
-
-    if (!htab_init(&htable, MAX_IMPORTED_PLATES))
-    {
-        printf("Error initialising htable\n");
-    }
-
-    textfile = fopen(fname, "r");
-    if (textfile == NULL)
-    {
-        printf("Error reading plates file");
-    }
-
-    while (plates_quantity < MAX_IMPORTED_PLATES && fscanf(textfile, "%s", line) != EOF)
-    {
-        // printf("Read line %s.\n", line);
-        char *plate_copy = malloc(sizeof(char) * (strlen(line) + 1));
-        strcpy(plate_copy, line);
-        plates_quantity++;
-        if (htab_find(&htable, plate_copy) != NULL)
-        {
-            printf("Duplicated item in htable\n");
-            continue;
-        }
-        if (!htab_add(&htable, plate_copy))
-        {
-            printf("Failed to add item into htable\n");
-        }
-    }
-    fclose(textfile);
-    return htable;
-}
 
 int main()
 {
@@ -272,8 +48,8 @@ int main()
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, 0);
     sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, 0);
-    simulation_ended_sem = sem_open(SIM_END_SEM_NAME, 0);
-    manager_ended_sem = sem_open(MAN_END_SEM_NAME, 0);
+    // simulation_ended_sem = sem_open(SIM_END_SEM_NAME, 0);
+    // manager_ended_sem = sem_open(MAN_END_SEM_NAME, 0);
 
     pthread_t monitor_sim_thread;
 
@@ -300,23 +76,18 @@ int main()
     pthread_t entrance_BG_threads[ENTRANCES];
     pthread_t entrance_threads[ENTRANCES];
     entrance_t *entrance;
+    entrance_data_t entrance_datas[ENTRANCES];
     for (size_t i = 0; i < ENTRANCES; i++)
     {
         get_entrance(&shm, i, &entrance);
+        entrance_datas[i].entrance = entrance;
+        entrance_datas[i].capacity = &capacity;
+        entrance_datas[i].hashtable = &hashtable;
         boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
         printf("Entrance %ld Boom Gate %p\n", i, &entrance->boom_gate);
-        // pthread_create(&entrance_BG_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
-        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)entrance);
+        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_datas[i]);
     }
-
-    pthread_mutex_lock(&initialisation_mutex);
-    while (ready_threads < (ENTRANCES * 1))
-    {
-        pthread_cond_wait(&initialisation_cond, &initialisation_mutex);
-    }
-    pthread_mutex_unlock(&initialisation_mutex);
-    printf("Finish Init Entrance threads.\n");
 
     printf("Waiting for simulation to ready.\n");
     sem_wait(simulation_ready_sem);
@@ -326,7 +97,7 @@ int main()
     sem_post(manager_ready_sem);
     printf("=================.\n");
     printf("Start Monitor Thread.\n");
-    pthread_create(&monitor_sim_thread, NULL, wait_sim_close, (void *)&shm);
+    pthread_create(&monitor_sim_thread, NULL, wait_sim_close, (void *)NULL);
 
     pthread_join(monitor_sim_thread, NULL);
     printf("=================.\n");

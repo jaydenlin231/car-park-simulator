@@ -67,7 +67,7 @@ void *handle_entrance_queue(void *data)
         pthread_mutex_unlock(queue_mutex);
 
         printf("Waiting for 2ms before triggering LPR from Queue:%p with Rego:%s\n", entrance_queue, first_plate_in_queue);
-        msleep(2 * TIME_MULITIPLIER);
+        msleep(10 * TIME_MULITIPLIER);
 
         pthread_mutex_lock(&entrance_LPR->mutex);
         for (int i = 0; i < 6; i++)
@@ -119,7 +119,7 @@ void *handle_boom_gate(void *data)
         {
             printf("Raising Boom Gate %p...\n", boom_gate);
             printf("Waiting 10 ms\n");
-            msleep(2 * TIME_MULITIPLIER);
+            msleep(10 * TIME_MULITIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
             printf("Boom Gate %p Opened\n", boom_gate);
@@ -130,7 +130,7 @@ void *handle_boom_gate(void *data)
         {
             printf("Lowering Boom Gate %p...\n", boom_gate);
             printf("Waiting 10 ms\n");
-            msleep(2 * TIME_MULITIPLIER);
+            msleep(10 * TIME_MULITIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_CLOSED;
             printf("Boom Gate %p Closed\n", boom_gate);
