@@ -86,7 +86,7 @@ void *monitor_entrance(void *data)
                 {
                     printf("Lowering Boom Gate %p...\n", boom_gate);
                     printf("Waiting 10 ms\n");
-                    msleep(10 * TIME_MULITIPLIER);
+                    msleep(10 * TIME_MULITIPLIER); // Lower after 10ms
                     pthread_mutex_lock(&boom_gate->mutex);
                     boom_gate->status = BG_LOWERING;
                     printf("Boom Gate %p Lowered\n", boom_gate);

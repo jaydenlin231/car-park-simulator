@@ -13,6 +13,14 @@ typedef struct entrance_data
 
 } entrance_data_t;
 
+typedef struct car
+{
+    char *plate;
+    int directed_lvl;
+    int actual_lvl;
+
+} car_t;
+
 void *handle_boom_gate(void *data);
 void *handle_entrance_queue(void *data);
 void *generate_cars(void *arg);

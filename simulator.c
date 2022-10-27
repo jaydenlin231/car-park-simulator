@@ -110,8 +110,9 @@ int main()
         pthread_cond_init(&entrance_datas[i].cond, NULL);
         sem_init(&entrance_datas[i].entrance_LPR_free, SEM_SHARED, 1);
 
-        boom_gate_t *boom_gate = &entrance->boom_gate;
-        pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
+        // boom_gate_t *boom_gate = &entrance->boom_gate;
+        // pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
+        pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)entrance);
         pthread_create(&entrance_queue_threads[i], NULL, handle_entrance_queue, (void *)&entrance_datas[i]);
     }
     // // exit_t *exit;

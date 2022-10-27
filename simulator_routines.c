@@ -81,9 +81,30 @@ void *handle_entrance_queue(void *data)
     }
 }
 
+void *car_logic(void *car_data)
+{
+    car_t *car = (car_t *)car_data;
+    while (true)
+    {
+        // Trigger level LPR here
+        // Then the manager sees the level LPR has been triggerd
+        // Then increases capacity by 1 at that level and start billing
+        printf("The car: %s has gone through to level: %d\n", car->plate, car->directed_lvl);
+        sleep(10);
+
+        printf("==================================\n");
+        printf("The car: %s has now left\n", car->plate);
+        printf("==================================\n");
+        pthread_exit(NULL);
+    }
+}
+
 void *handle_boom_gate(void *data)
 {
-    boom_gate_t *boom_gate = (boom_gate_t *)data;
+    entrance_t *entrance_data = (entrance_t *)data;
+    boom_gate_t *boom_gate = &entrance_data->boom_gate;
+    LPR_t *lpr = &entrance_data->lpr;
+    info_sign_t *sign = &entrance_data->info_sign;
 
     printf("Created Boom Gate %p Thread\n", boom_gate);
 
@@ -118,7 +139,7 @@ void *handle_boom_gate(void *data)
         if (boom_gate->status == BG_RAISING)
         {
             printf("Raising Boom Gate %p...\n", boom_gate);
-            printf("Waiting 10 ms\n");
+            printf("Opening... 10 ms\n");
             msleep(10 * TIME_MULITIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
@@ -128,6 +149,16 @@ void *handle_boom_gate(void *data)
         }
         else if (boom_gate->status == BG_LOWERING)
         {
+            // Car logic stuff
+            pthread_t car;
+            car_t *car_data = malloc(sizeof(car_t));
+            char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
+            strcpy(plate_copy, lpr->plate);
+            car_data->plate = plate_copy;
+            int level = sign->display - '0';
+            car_data->directed_lvl = level;
+            pthread_create(&car, NULL, car_logic, (void *)car_data);
+
             printf("Lowering Boom Gate %p...\n", boom_gate);
             printf("Waiting 10 ms\n");
             msleep(10 * TIME_MULITIPLIER);
@@ -196,7 +227,8 @@ void *generate_cars(void *arg)
         int rand_car_gen_time = (rand() % 100) + 1;
         pthread_mutex_unlock(&lock_rand_num);
 
-        msleep(rand_car_gen_time * TIME_MULITIPLIER);
+        // msleep(rand_car_gen_time * TIME_MULITIPLIER);
+        msleep(4000);
         // char result;
         pthread_mutex_lock(&lock_rand_num);
         int halfChance = rand() % 2;
