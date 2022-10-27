@@ -40,7 +40,6 @@ static pthread_cond_t initialisation_cond = PTHREAD_COND_INITIALIZER;
 static htab_t hashtable;
 static capacity_t capacity;
 
-
 int main()
 {
     shared_memory_t shm;

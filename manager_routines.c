@@ -42,7 +42,7 @@ void *monitor_entrance(void *data)
 
     while (true)
     {
-        printf("Using hashtable %p\n", hashtable);
+        // printf("Using hashtable %p\n", hashtable);
         if (pthread_mutex_lock(&LPR->mutex) != 0)
         {
             perror("pthread_mutex_lock(&LPR->mutex)");
@@ -136,7 +136,6 @@ void *wait_sim_close(void *data)
     printf("Monitor Thread Waiting for simulation to close\n");
     sem_wait(simulation_ended_sem);
     printf("Monitor notified simulation closed\n");
-
     sem_post(manager_ended_sem);
     return NULL;
 }
