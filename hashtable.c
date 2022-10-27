@@ -163,40 +163,40 @@ void htab_destroy(htab_t *h)
     h->size = 0;
 }
 
-// htab_t import_htable(char fname[])
-// {
-//     htab_t htable;
-//     FILE *textfile;
-//     char line[MAX_LINE_LENGTH];
-//     int plates_quantity = 0;
+htab_t import_htable(char fname[])
+{
+    htab_t htable;
+    FILE *textfile;
+    char line[MAX_LINE_LENGTH];
+    int plates_quantity = 0;
 
-//     if (!htab_init(&htable, MAX_IMPORTED_PLATES))
-//     {
-//         printf("Error initialising htable\n");
-//     }
+    if (!htab_init(&htable, MAX_IMPORTED_PLATES))
+    {
+        printf("Error initialising htable\n");
+    }
 
-//     textfile = fopen(fname, "r");
-//     if (textfile == NULL)
-//     {
-//         printf("Error reading plates file");
-//     }
+    textfile = fopen(fname, "r");
+    if (textfile == NULL)
+    {
+        printf("Error reading plates file");
+    }
 
-//     while (plates_quantity < MAX_IMPORTED_PLATES && fscanf(textfile, "%s", line) != EOF)
-//     {
-//         // printf("Read line %s.\n", line);
-//         char *plate_copy = malloc(sizeof(char) * (strlen(line) + 1));
-//         strcpy(plate_copy, line);
-//         plates_quantity++;
-//         if (htab_find(&htable, plate_copy) != NULL)
-//         {
-//             printf("Duplicated item in htable\n");
-//             continue;
-//         }
-//         if (!htab_add(&htable, plate_copy))
-//         {
-//             printf("Failed to add item into htable\n");
-//         }
-//     }
-//     fclose(textfile);
-//     return htable;
-// }
+    while (plates_quantity < MAX_IMPORTED_PLATES && fscanf(textfile, "%s", line) != EOF)
+    {
+        // printf("Read line %s.\n", line);
+        char *plate_copy = malloc(sizeof(char) * (strlen(line) + 1));
+        strcpy(plate_copy, line);
+        plates_quantity++;
+        if (htab_find(&htable, plate_copy) != NULL)
+        {
+            printf("Duplicated item in htable\n");
+            continue;
+        }
+        if (!htab_add(&htable, plate_copy))
+        {
+            printf("Failed to add item into htable\n");
+        }
+    }
+    fclose(textfile);
+    return htable;
+}
