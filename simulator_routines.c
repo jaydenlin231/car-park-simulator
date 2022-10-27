@@ -67,7 +67,7 @@ void *handle_entrance_queue(void *data)
         pthread_mutex_unlock(queue_mutex);
 
         printf("Waiting for 2ms before triggering LPR from Queue:%p with Rego:%s\n", entrance_queue, first_plate_in_queue);
-        msleep(10 * TIME_MULITIPLIER);
+        msleep(2 * TIME_MULITIPLIER);
 
         pthread_mutex_lock(&entrance_LPR->mutex);
         for (int i = 0; i < 6; i++)
@@ -192,7 +192,11 @@ void *generate_cars(void *arg)
 
     while (true)
     {
-        msleep(10 * TIME_MULITIPLIER);
+        pthread_mutex_lock(&lock_rand_num);
+        int rand_car_gen_time = (rand() % 100) + 1;
+        pthread_mutex_unlock(&lock_rand_num);
+
+        msleep(rand_car_gen_time * TIME_MULITIPLIER);
         // char result;
         pthread_mutex_lock(&lock_rand_num);
         int halfChance = rand() % 2;
