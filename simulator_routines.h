@@ -13,6 +13,13 @@ typedef struct entrance_data
 
 } entrance_data_t;
 
+typedef struct entrance_data_shm
+{
+    entrance_t *entrance;
+    shared_memory_t *shm;
+
+} entrance_data_shm_t;
+
 typedef struct car
 {
     char *plate;

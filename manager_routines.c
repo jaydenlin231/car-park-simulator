@@ -60,7 +60,7 @@ void *monitor_entrance(void *data)
         if (permitted_car != NULL)
         {
             printf("%s is in the permitted list\n", permitted_car->key);
-            // msleep(1 * TIME_MULITIPLIER);
+            // msleep(1 * TIME_MULTIPLIER);
             int directed_lvl = get_empty_spot(capacity);
             permitted_car->directed_lvl = directed_lvl;
             // permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
@@ -70,8 +70,8 @@ void *monitor_entrance(void *data)
                 info_sign->display = directed_lvl + '0';
                 printf("Info sign says: %c\n", info_sign->display);
                 pthread_mutex_unlock(&info_sign->mutex);
-                printf("Directed to level: %d\n", directed_lvl);
-                print_capacity(capacity);
+                // printf("Directed to level: %d\n", directed_lvl);
+                // print_capacity(capacity);
 
                 pthread_mutex_lock(&boom_gate->mutex);
                 control_boom_gate(boom_gate, BG_RAISING);
@@ -87,7 +87,7 @@ void *monitor_entrance(void *data)
                 {
                     printf("Lowering Boom Gate %p...\n", boom_gate);
                     printf("Currently Open for 20 ms\n"); // The car is travelling to its spot as soon as it opened
-                    msleep(20 * TIME_MULITIPLIER);        // Lower after 20ms
+                    msleep(20 * TIME_MULTIPLIER);         // Lower after 20ms
                     pthread_mutex_lock(&boom_gate->mutex);
                     boom_gate->status = BG_LOWERING;
                     printf("Boom Gate %p Lowered\n", boom_gate);
@@ -136,9 +136,7 @@ void *monitor_lpr(void *data)
     LPR_t *level_lpr = manager_lpr_data->lpr;
     capacity_t *capacity = manager_lpr_data->capacity;
     htab_t *hashtable = manager_lpr_data->hashtable;
-    printf("Level LPR CAP: ");
-    print_capacity(capacity);
-    printf("TESTING INTEGER: %d\n", level_lpr->test);
+    int level = manager_lpr_data->level - 1;
 
     while (true)
     {
@@ -157,16 +155,15 @@ void *monitor_lpr(void *data)
             perror("pthread_mutex_unlock(&level_lpr->mutex)");
             exit(1);
         };
-        printf("TEST\n");
-        printf("%s is at the level %d LPR\n", level_lpr->plate, manager_lpr_data->level);
+        printf("%s is at the level %d LPR\n", level_lpr->plate, level);
         item_t *car = htab_find(hashtable, level_lpr->plate);
         if (car->entry_time == 0)
         {
             printf("Just Parked!\n");
-            car->actual_lvl = manager_lpr_data->level;
+            car->actual_lvl = level;
             start_time(hashtable, car->key);
             pthread_mutex_lock(&capacity->mutex);
-            set_capacity(capacity, manager_lpr_data->level);
+            set_capacity(capacity, level);
             pthread_mutex_unlock(&capacity->mutex);
             print_capacity(capacity);
         }

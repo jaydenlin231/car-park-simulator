@@ -97,6 +97,7 @@ int main()
     // sh_entrance_data_t *sh_entrance_data = malloc(sizeof(sh_entrance_data_t));
 
     entrance_data_t entrance_datas[ENTRANCES];
+    entrance_data_shm_t entrance_data_shms[ENTRANCES];
     // entrance_data_shm_t entrance_data_shms[ENTRANCES];
 
     printf("Init Entrance threads.\n");
@@ -112,10 +113,10 @@ int main()
         sem_init(&entrance_datas[i].entrance_LPR_free, SEM_SHARED, 1);
         pthread_create(&entrance_queue_threads[i], NULL, handle_entrance_queue, (void *)&entrance_datas[i]);
 
-        // entrance_data_shms[i].entrance = entrance;
-        // entrance_data_shms[i].shm = &shm;
+        entrance_data_shms[i].entrance = entrance;
+        entrance_data_shms[i].shm = &shm;
         // boom_gate_t *boom_gate = &entrance->boom_gate;
-        pthread_create(&entrance_threads[i], NULL, handle_entrance_boomgate, (void *)entrance);
+        pthread_create(&entrance_threads[i], NULL, handle_entrance_boomgate, (void *)&entrance_data_shms[i]);
     }
     // // exit_t *exit;
     // for (int i = 0; i < EXITS; i++) {

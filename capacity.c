@@ -34,8 +34,6 @@ void set_capacity(capacity_t *capacity, int level)
     {
         capacity->curr_capacity[level] += 1;
     }
-    // Carpark Full
-    capacity->full = true;
 }
 
 void free_carpark_space(capacity_t *capacity, int level)

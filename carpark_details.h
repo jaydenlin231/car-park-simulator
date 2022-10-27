@@ -1,10 +1,10 @@
 #pragma once
 #include <pthread.h>
 
-#define LEVELS 4
-#define ENTRANCES 4
-#define EXITS 4
-#define NUM_SPOTS_LVL 6
+#define LEVELS 5
+#define ENTRANCES 5
+#define EXITS 5
+#define NUM_SPOTS_LVL 100
 
 #define BG_RAISING ('R')
 #define BG_OPENED ('O')

@@ -67,7 +67,7 @@ void *handle_entrance_queue(void *data)
         pthread_mutex_unlock(queue_mutex);
 
         printf("Waiting for 2ms before triggering LPR from Queue:%p with Rego:%s\n", entrance_queue, first_plate_in_queue);
-        msleep(2 * TIME_MULITIPLIER);
+        msleep(2 * TIME_MULTIPLIER);
 
         pthread_mutex_lock(&entrance_LPR->mutex);
         for (int i = 0; i < 6; i++)
@@ -98,7 +98,7 @@ void *car_logic(void *data)
 
     // while (true)
     // {
-    msleep(2000); // Takes 10ms to go to its parking spot
+    msleep(10 * TIME_MULTIPLIER); // Takes 10ms to go to its parking spot
 
     printf("Attemp to change level LPR\n");
     if (pthread_mutex_lock(&lpr->mutex) != 0)
@@ -132,10 +132,10 @@ void *car_logic(void *data)
     printf("The car: %s is parked at: %d\n", car->plate, car->directed_lvl);
     printf("***********************************\n");
 
-    msleep(10 * TIME_MULITIPLIER);
+    msleep(100);
     printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
 
-    sleep(10); // Park for 10-10000ms
+    msleep(1 * TIME_MULTIPLIER); // Park for 10-10000ms
     // Trigger level LPR again when exiting
 
     // Queue up at exit
@@ -149,10 +149,12 @@ void *car_logic(void *data)
 
 void *handle_entrance_boomgate(void *data)
 {
-    entrance_t *entrance_data = (entrance_t *)data;
-    boom_gate_t *boom_gate = &entrance_data->boom_gate;
-    LPR_t *lpr = &entrance_data->lpr;
-    info_sign_t *sign = &entrance_data->info_sign;
+    entrance_data_shm_t *entrance_data_shm = (entrance_data_shm_t *)data;
+    shared_memory_t *shm = entrance_data_shm->shm;
+    entrance_t *entrance = entrance_data_shm->entrance;
+    boom_gate_t *boom_gate = &entrance->boom_gate;
+    LPR_t *lpr = &entrance->lpr;
+    info_sign_t *sign = &entrance->info_sign;
 
     printf("Created Boom Gate %p Thread\n", boom_gate);
 
@@ -187,7 +189,7 @@ void *handle_entrance_boomgate(void *data)
         {
             printf("Raising Boom Gate %p...\n", boom_gate);
             printf("Opening: 10 ms\n");
-            msleep(10 * TIME_MULITIPLIER);
+            msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
             printf("Boom Gate %p Opened\n", boom_gate);
@@ -201,11 +203,14 @@ void *handle_entrance_boomgate(void *data)
             char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
             strcpy(plate_copy, lpr->plate);
             car_data->plate = plate_copy;
-            int level = sign->display - '0';
+            int level = (sign->display - '0') - 1;
             car_data->directed_lvl = level;
             level_lpr_data->car = car_data;
-            level_lpr_data->lpr = lpr;
-            // get_lpr(&shm)
+
+            LPR_t *directed_level_LPR;
+            get_lpr(shm, level, &directed_level_LPR);
+            level_lpr_data->lpr = directed_level_LPR;
+            printf("Car wants to go to zero index: %d\n", level);
             printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!LPR is at address %p\n", lpr);
             printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Copied LPR is at address %p\n", level_lpr_data->lpr);
             pthread_create(&car, NULL, car_logic, (void *)level_lpr_data);
@@ -214,7 +219,7 @@ void *handle_entrance_boomgate(void *data)
         {
             printf("Lowering Boom Gate %p...\n", boom_gate);
             printf("Lowering: 10 ms\n");
-            msleep(10 * TIME_MULITIPLIER);
+            msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_CLOSED;
             printf("Boom Gate %p Closed\n", boom_gate);
@@ -293,8 +298,8 @@ void *generate_cars(void *arg)
         int rand_car_gen_time = (rand() % 100) + 1;
         pthread_mutex_unlock(&lock_rand_num);
 
-        // msleep(rand_car_gen_time * TIME_MULITIPLIER);
-        msleep(4000);
+        // msleep(rand_car_gen_time * TIME_MULTIPLIER);
+        msleep(100);
         // char result;
         pthread_mutex_lock(&lock_rand_num);
         int halfChance = rand() % 2;
