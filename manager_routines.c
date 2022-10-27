@@ -3,6 +3,7 @@
 #include "carpark_details.h"
 #include "hashtable.h"
 #include "manager_routines.h"
+#include "billing.h"
 #include "utility.h"
 #include "capacity.h"
 
@@ -60,9 +61,9 @@ void *monitor_entrance(void *data)
         {
             printf("%s is in the permitted list\n", permitted_car->key);
             // msleep(1 * TIME_MULITIPLIER);
-            int directed_lvl = get_set_empty_spot(capacity);
+            int directed_lvl = get_empty_spot(capacity);
             permitted_car->directed_lvl = directed_lvl;
-            permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
+            // permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
             if (directed_lvl != NULL)
             {
                 pthread_mutex_lock(&info_sign->mutex);
@@ -85,8 +86,8 @@ void *monitor_entrance(void *data)
                 if (boom_gate->status == BG_OPENED)
                 {
                     printf("Lowering Boom Gate %p...\n", boom_gate);
-                    printf("Waiting 10 ms\n");
-                    msleep(10 * TIME_MULITIPLIER); // Lower after 10ms
+                    printf("Currently Open for 20 ms\n"); // The car is travelling to its spot as soon as it opened
+                    msleep(20 * TIME_MULITIPLIER);        // Lower after 20ms
                     pthread_mutex_lock(&boom_gate->mutex);
                     boom_gate->status = BG_LOWERING;
                     printf("Boom Gate %p Lowered\n", boom_gate);
@@ -126,6 +127,62 @@ void *monitor_entrance(void *data)
         }
         pthread_cond_broadcast(&LPR->cond);
         pthread_mutex_unlock(&LPR->mutex);
+    }
+}
+
+void *monitor_lpr(void *data)
+{
+    manager_lpr_data_t *manager_lpr_data = (manager_lpr_data_t *)data;
+    LPR_t *level_lpr = manager_lpr_data->lpr;
+    capacity_t *capacity = manager_lpr_data->capacity;
+    htab_t *hashtable = manager_lpr_data->hashtable;
+    printf("Level LPR CAP: ");
+    print_capacity(capacity);
+    printf("TESTING INTEGER: %d\n", level_lpr->test);
+
+    while (true)
+    {
+        if (pthread_mutex_lock(&level_lpr->mutex) != 0)
+        {
+            perror("pthread_mutex_lock(&level_lpr->mutex)");
+            exit(1);
+        };
+        while (level_lpr->plate[0] == NULL)
+        {
+            printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
+            pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
+        }
+        if (pthread_mutex_unlock(&level_lpr->mutex) != 0)
+        {
+            perror("pthread_mutex_unlock(&level_lpr->mutex)");
+            exit(1);
+        };
+        printf("TEST\n");
+        printf("%s is at the level %d LPR\n", level_lpr->plate, manager_lpr_data->level);
+        item_t *car = htab_find(hashtable, level_lpr->plate);
+        if (car->entry_time == 0)
+        {
+            printf("Just Parked!\n");
+            car->actual_lvl = manager_lpr_data->level;
+            start_time(hashtable, car->key);
+            pthread_mutex_lock(&capacity->mutex);
+            set_capacity(capacity, manager_lpr_data->level);
+            pthread_mutex_unlock(&capacity->mutex);
+            print_capacity(capacity);
+        }
+        else
+        {
+            printf("Left carpark!\n");
+            calc_bill(hashtable, car->key);
+            car->entry_time == 0;
+        }
+
+        // Clear LPR
+        for (int i = 0; i < 6; i++)
+        {
+            level_lpr->plate[i] = NULL;
+        }
+        pthread_cond_broadcast(&level_lpr->cond);
     }
 }
 

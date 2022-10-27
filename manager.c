@@ -72,20 +72,36 @@ int main()
     }
 
     printf("Init Entrance threads.\n");
-    pthread_t entrance_BG_threads[ENTRANCES];
+    // pthread_t entrance_BG_threads[ENTRANCES];
     pthread_t entrance_threads[ENTRANCES];
     entrance_t *entrance;
-    entrance_data_t entrance_datas[ENTRANCES];
+    entrance_data_t entrance_data[ENTRANCES];
     for (size_t i = 0; i < ENTRANCES; i++)
     {
         get_entrance(&shm, i, &entrance);
-        entrance_datas[i].entrance = entrance;
-        entrance_datas[i].capacity = &capacity;
-        entrance_datas[i].hashtable = &hashtable;
+        entrance_data[i].entrance = entrance;
+        entrance_data[i].capacity = &capacity;
+        entrance_data[i].hashtable = &hashtable;
         boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
         boom_gate = &entrance->boom_gate;
         printf("Entrance %ld Boom Gate %p\n", i, &entrance->boom_gate);
-        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_datas[i]);
+        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_data[i]);
+    }
+
+    pthread_t level_lpr[LEVELS];
+    // LPR_t *lpr;
+    level_t *level;
+    manager_lpr_data_t level_data[LEVELS];
+    for (size_t i = 0; i < LEVELS; i++)
+    {
+        // get_lpr(&shm, i, &lpr);
+        get_level(&shm, i, &level);
+        printf("level is at %p\n", level);
+        level_data[i].lpr = &(level->lpr);
+        level_data[i].hashtable = &hashtable;
+        level_data[i].capacity = &capacity;
+        level_data[i].level = i + 1;
+        pthread_create(&level_lpr[i], NULL, monitor_lpr, (void *)&level_data[i]);
     }
 
     printf("Waiting for simulation to ready.\n");

@@ -81,25 +81,73 @@ void *handle_entrance_queue(void *data)
     }
 }
 
-void *car_logic(void *car_data)
+void *handle_level_lpr(void *data)
 {
-    car_t *car = (car_t *)car_data;
-    while (true)
-    {
-        // Trigger level LPR here
-        // Then the manager sees the level LPR has been triggerd
-        // Then increases capacity by 1 at that level and start billing
-        printf("The car: %s has gone through to level: %d\n", car->plate, car->directed_lvl);
-        sleep(10);
+    // if lpr->plate != Null
+    // signal to manager to read the plate in lpr
 
-        printf("==================================\n");
-        printf("The car: %s has now left\n", car->plate);
-        printf("==================================\n");
-        pthread_exit(NULL);
-    }
+    // clear lpr->plate ???
 }
 
-void *handle_boom_gate(void *data)
+void *car_logic(void *data)
+{
+    printf("Car logic started\n");
+    level_lpr_data_t *level_lpr_data = (level_lpr_data_t *)data;
+    car_t *car = level_lpr_data->car;
+    LPR_t *lpr = level_lpr_data->lpr;
+
+    // while (true)
+    // {
+    msleep(2000); // Takes 10ms to go to its parking spot
+
+    printf("Attemp to change level LPR\n");
+    if (pthread_mutex_lock(&lpr->mutex) != 0)
+    {
+        perror("pthread_mutex_lock(&level_lpr->mutex)");
+        exit(1);
+    };
+    for (int i = 0; i < 6; i++)
+    {
+        lpr->plate[i] = car->plate[i];
+    }
+    printf("Broadcast LPR\n");
+    if (pthread_cond_broadcast(&lpr->cond) != 0)
+    {
+        perror("pthread_cond_broadcast(&level_lpr->mutex)");
+        exit(1);
+    };
+    if (pthread_mutex_unlock(&lpr->mutex) != 0)
+    {
+        perror("pthread_mutex_unlock(&level_lpr->mutex)");
+        exit(1);
+    };
+    // Trigger level LPR here prob with mutex locks and conds
+    // pthread_mutex_lock
+    // Then the manager sees the level LPR has been triggerd
+
+    // Then increases capacity by 1 at that level and start billing
+
+    printf("***********************************\n");
+    printf("level lpr reads: %s\n", lpr->plate);
+    printf("The car: %s is parked at: %d\n", car->plate, car->directed_lvl);
+    printf("***********************************\n");
+
+    msleep(10 * TIME_MULITIPLIER);
+    printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
+
+    sleep(10); // Park for 10-10000ms
+    // Trigger level LPR again when exiting
+
+    // Queue up at exit
+
+    printf("==================================\n");
+    printf("The car: %s has now left\n", car->plate);
+    printf("==================================\n");
+    // pthread_exit(NULL);
+    // }
+}
+
+void *handle_entrance_boomgate(void *data)
 {
     entrance_t *entrance_data = (entrance_t *)data;
     boom_gate_t *boom_gate = &entrance_data->boom_gate;
@@ -134,33 +182,38 @@ void *handle_boom_gate(void *data)
         {
             exit(1);
         };
-
         printf("Boom Gate %p Received Instruction Status: %c.\n", boom_gate, boom_gate->status);
         if (boom_gate->status == BG_RAISING)
         {
             printf("Raising Boom Gate %p...\n", boom_gate);
-            printf("Opening... 10 ms\n");
+            printf("Opening: 10 ms\n");
             msleep(10 * TIME_MULITIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
             printf("Boom Gate %p Opened\n", boom_gate);
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
-        }
-        else if (boom_gate->status == BG_LOWERING)
-        {
+
             // Car logic stuff
             pthread_t car;
+            level_lpr_data_t *level_lpr_data = malloc(sizeof(level_lpr_data_t));
             car_t *car_data = malloc(sizeof(car_t));
             char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
             strcpy(plate_copy, lpr->plate);
             car_data->plate = plate_copy;
             int level = sign->display - '0';
             car_data->directed_lvl = level;
-            pthread_create(&car, NULL, car_logic, (void *)car_data);
-
+            level_lpr_data->car = car_data;
+            level_lpr_data->lpr = lpr;
+            // get_lpr(&shm)
+            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!LPR is at address %p\n", lpr);
+            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Copied LPR is at address %p\n", level_lpr_data->lpr);
+            pthread_create(&car, NULL, car_logic, (void *)level_lpr_data);
+        }
+        else if (boom_gate->status == BG_LOWERING)
+        {
             printf("Lowering Boom Gate %p...\n", boom_gate);
-            printf("Waiting 10 ms\n");
+            printf("Lowering: 10 ms\n");
             msleep(10 * TIME_MULITIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_CLOSED;
@@ -172,6 +225,19 @@ void *handle_boom_gate(void *data)
     printf("Boom Gate Quit before broadcast %p...\n", boom_gate);
     return NULL;
 }
+
+// void assign_cars(void *arg)
+// {
+//     // Car logic stuff
+//     pthread_t car;
+//     car_t *car_data = malloc(sizeof(car_t));
+//     char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
+//     strcpy(plate_copy, lpr->plate);
+//     car_data->plate = plate_copy;
+//     int level = sign->display - '0';
+//     car_data->directed_lvl = level;
+//     pthread_create(&car, NULL, car_logic, (void *)car_data);
+// }
 
 void *generate_cars(void *arg)
 {

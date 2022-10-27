@@ -1,9 +1,9 @@
 #pragma once
 #include <pthread.h>
 
-#define LEVELS 1
-#define ENTRANCES 1
-#define EXITS 1
+#define LEVELS 4
+#define ENTRANCES 4
+#define EXITS 4
 #define NUM_SPOTS_LVL 6
 
 #define BG_RAISING ('R')
@@ -17,6 +17,7 @@ typedef struct LPR
     pthread_mutex_t mutex;
     pthread_cond_t cond;
     char plate[6];
+    int test;
 
 } LPR_t;
 

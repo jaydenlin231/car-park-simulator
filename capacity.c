@@ -11,7 +11,7 @@ void init_capacity(capacity_t *capacity)
     capacity->max_cap_per_lvl = NUM_SPOTS_LVL;
 }
 
-int get_set_empty_spot(capacity_t *capacity)
+int get_empty_spot(capacity_t *capacity)
 {
     if (!capacity->full)
     {
@@ -19,7 +19,6 @@ int get_set_empty_spot(capacity_t *capacity)
         {
             if (capacity->curr_capacity[i] < capacity->max_cap_per_lvl)
             {
-                capacity->curr_capacity[i] += 1;
                 return i + 1;
             }
         }
@@ -27,6 +26,16 @@ int get_set_empty_spot(capacity_t *capacity)
     // Carpark Full
     capacity->full = true;
     return NULL;
+}
+
+void set_capacity(capacity_t *capacity, int level)
+{
+    if (!capacity->full)
+    {
+        capacity->curr_capacity[level] += 1;
+    }
+    // Carpark Full
+    capacity->full = true;
 }
 
 void free_carpark_space(capacity_t *capacity, int level)
