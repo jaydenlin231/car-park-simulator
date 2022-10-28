@@ -185,8 +185,8 @@ void *car_logic(void *data)
 
     int rand_park_time = (rand() % (10000 - 10 + 1)) + 10;
     // printf("Parking for %d ms\n", rand_park_time);
-    // msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
-    msleep(15000); // Park for 10-10000ms
+    msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
+    // msleep(15000); // Park for 10-10000ms
     pthread_mutex_lock(&lpr->mutex);
     while (lpr->plate[0] != NULL)
     {
