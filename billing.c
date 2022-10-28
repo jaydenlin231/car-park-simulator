@@ -15,7 +15,7 @@ void start_time(htab_t *h, char *s)
     if (item != NULL)
     {
         item->entry_time = get_time();
-        item_print(item);
+        // item_print(item);
     }
     else
     {
@@ -23,7 +23,7 @@ void start_time(htab_t *h, char *s)
     }
 }
 
-void calc_bill(htab_t *h, char *s)
+void calc_bill(htab_t *h, char *s, double *total)
 {
     item_t *item = htab_find(h, s);
     if (item != NULL)
@@ -33,12 +33,14 @@ void calc_bill(htab_t *h, char *s)
         int delta_ms = delta_time * 1000;
         int delta_ms_rounded = ((delta_ms + 5 / 2) / 5) * 5;
         double rounded = delta_ms_rounded / 1000.0;
-        printf("parked for %lf seconds\n", rounded);
+        // printf("parked for %lf seconds\n", rounded);
         double bill = rounded * 50;
 
         // Write to billing.txt file
         FILE *fp;
         fp = fopen("billing.txt", "a");
+        // if (!fprintf(fp, "%s $%.2lf\n", item->key, bill))
+        *total += bill;
         if (!fprintf(fp, "%s $%.2lf\n", item->key, bill))
         {
             printf("Error writing\n");

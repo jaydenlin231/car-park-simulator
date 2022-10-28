@@ -14,6 +14,17 @@ typedef struct entrance_data
 
 } entrance_data_t;
 
+typedef struct exit_data
+{
+    exit_t *exit;
+    queue_t *exit_queue;
+    pthread_mutex_t queue_mutex;
+    pthread_cond_t cond;
+    sem_t exit_LPR_free;
+    htab_t *car_table;
+
+} exit_data_t;
+
 typedef struct entrance_data_shm
 {
     entrance_t *entrance;
@@ -40,4 +51,5 @@ typedef struct level_lpr_data
 void *handle_entrance_boomgate(void *data);
 void *handle_entrance_queue(void *data);
 void *generate_cars(void *arg);
+void *handle_exit_queue(void *data);
 void *wait_manager_close(void *data);

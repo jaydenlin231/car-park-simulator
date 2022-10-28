@@ -6,6 +6,7 @@
 #include "shared_memory.h"
 #include "queue.h"
 #include "hashtable.h"
+#include "billing.h"
 #include "utility.h"
 #include "simulator_routines.h"
 
@@ -21,11 +22,6 @@ void *handle_entrance_queue(void *data)
     LPR_t *entrance_LPR = &entrance->lpr;
     pthread_mutex_t *LPR_mutex = &entrance_LPR->mutex;
     pthread_cond_t *LPR_cond = &entrance_LPR->cond;
-
-    // pthread_mutex_lock(&initialisation_mutex);
-    // ready_threads++;
-    // pthread_cond_broadcast(&initialisation_cond);
-    // pthread_mutex_unlock(&initialisation_mutex);
 
     while (true)
     {
@@ -81,17 +77,74 @@ void *handle_entrance_queue(void *data)
     }
 }
 
-// void *handle_level_lpr(void *data)
-// {
-//     // if lpr->plate != Null
-//     // signal to manager to read the plate in lpr
+void *handle_exit_queue(void *data)
+{
+    exit_data_t *exit_data = (exit_data_t *)data;
+    exit_t *current_exit = exit_data->exit;
+    queue_t *exit_queue = exit_data->exit_queue;
+    pthread_mutex_t *queue_mutex = &exit_data->queue_mutex;
+    pthread_cond_t *cond = &exit_data->cond;
+    sem_t *exit_LPR_free = &exit_data->exit_LPR_free;
 
-//     // clear lpr->plate ???
-// }
+    LPR_t *exit_LPR = &current_exit->lpr;
+    pthread_mutex_t *LPR_mutex = &exit_LPR->mutex;
+    pthread_cond_t *LPR_cond = &exit_LPR->cond;
+
+    while (true)
+    {
+        if (pthread_mutex_lock(&exit_LPR->mutex) != 0)
+        {
+            perror("pthread_mutex_lock(&LPR->mutex)");
+            exit(1);
+        };
+        while (exit_LPR->plate[0] != NULL)
+        {
+            // printf("\t\tCond Wait LPR NULL, currently: %s\n", exit_LPR->plate);
+            pthread_cond_wait(&exit_LPR->cond, &exit_LPR->mutex);
+        }
+        if (pthread_mutex_unlock(&exit_LPR->mutex) != 0)
+        {
+            perror("pthread_mutex_lock(&LPR->mutex)");
+            exit(1);
+        };
+
+        // printf("\t\tQueue:%p exit_LPR_free\n", exit_queue);
+
+        if (pthread_mutex_lock(queue_mutex) != 0)
+        {
+            exit(1);
+        };
+        // printf("Is Empty: %d\n", entrance_data->queue_is_empty);
+        while (is_empty(exit_queue))
+        {
+            // printf("\t\tQueue:%p COND WAIT queue not empty, current is_empty status:%d\n", exit_queue, is_empty(exit_queue));
+            pthread_cond_wait(cond, queue_mutex);
+        }
+        pthread_mutex_unlock(queue_mutex);
+
+        pthread_mutex_lock(queue_mutex);
+        char *first_plate_in_queue = dequeue(exit_queue);
+        // printf("Dequeue from Queue:%p - %s\n", exit_queue, first_plate_in_queue);
+        pthread_mutex_unlock(queue_mutex);
+
+        // printf("Waiting for 2ms before triggering LPR from Queue:%p with Rego:%s\n", exit_queue, first_plate_in_queue);
+        msleep(2 * TIME_MULTIPLIER);
+
+        pthread_mutex_lock(&exit_LPR->mutex);
+        for (int i = 0; i < 6; i++)
+        {
+            /* code */
+            exit_LPR->plate[i] = first_plate_in_queue[i];
+        }
+        pthread_cond_broadcast(&exit_LPR->cond);
+        pthread_mutex_unlock(&exit_LPR->mutex);
+        // printf("\t\tEntrance LPR set as: %s\n", exit_LPR->plate);
+    }
+}
 
 void *car_logic(void *data)
 {
-    // printf("Car logic started\n");
+
     level_lpr_data_t *level_lpr_data = (level_lpr_data_t *)data;
     car_t *car = level_lpr_data->car;
     LPR_t *lpr = level_lpr_data->lpr;
@@ -99,7 +152,17 @@ void *car_logic(void *data)
 
     msleep(10 * TIME_MULTIPLIER); // Takes 10ms to go to its parking spot
 
+    // printf("Car logic started\n");
+
     // printf("Attemp to change level LPR\n");
+    pthread_mutex_lock(&lpr->mutex);
+    while (lpr->plate[0] != NULL)
+    {
+        // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
+        pthread_cond_wait(&lpr->cond, &lpr->mutex);
+    }
+    pthread_mutex_unlock(&lpr->mutex);
+
     pthread_mutex_lock(&lpr->mutex);
     for (int i = 0; i < 6; i++)
     {
@@ -120,35 +183,39 @@ void *car_logic(void *data)
 
     // printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
 
-    msleep(500 * TIME_MULTIPLIER); // Park for 10-10000ms
+    int rand_park_time = (rand() % (10000 - 10 + 1)) + 10;
+    // printf("Parking for %d ms\n", rand_park_time);
+    // msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
+    msleep(15000); // Park for 10-10000ms
+    pthread_mutex_lock(&lpr->mutex);
+    while (lpr->plate[0] != NULL)
+    {
+        // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
+        pthread_cond_wait(&lpr->cond, &lpr->mutex);
+    }
+    pthread_mutex_unlock(&lpr->mutex);
 
-    // Trigger level LPR again when exiting
+    // // Trigger level LPR again when exiting
     pthread_mutex_lock(&lpr->mutex);
     for (int i = 0; i < 6; i++)
     {
         lpr->plate[i] = car->plate[i];
     }
+    pthread_mutex_lock(&hashtable->mutex);
+    htab_delete(hashtable, car->plate);
+    // printf("Delete %s at time: %Lf\n", car->plate, get_time());
+    pthread_mutex_unlock(&hashtable->mutex);
     pthread_cond_broadcast(&lpr->cond);
     pthread_mutex_unlock(&lpr->mutex);
 
     // Queue up at exit
     // msleep(10 * TIME_MULTIPLIER); // Takes 10ms to go to exit
 
-    if (pthread_mutex_lock(&hashtable->mutex) != 0)
-    {
-        perror("pthread_mutex_lock(&hashtable->mutex)");
-        exit(1);
-    };
-    htab_delete(hashtable, car->plate);
-    if (pthread_mutex_unlock(&hashtable->mutex) != 0)
-    {
-        perror("pthread_mutex_unlock(&hashtable->mutex)");
-        exit(1);
-    };
     // printf("==================================\n");
     // printf("The car: %s has now left\n", car->plate);
     // printf("==================================\n");
-    // pthread_exit(NULL);
+    free(car);
+    pthread_exit(NULL);
 }
 
 void *handle_entrance_boomgate(void *data)
@@ -210,9 +277,18 @@ void *handle_entrance_boomgate(void *data)
             strcpy(plate_copy, lpr->plate);
             // htab_add(hashtable, plate_copy);
             car_data->plate = plate_copy;
+            // zero index level
             int level = (sign->display - '0') - 1;
             car_data->directed_lvl = level;
-            car_data->actual_lvl = car_data->directed_lvl; // Add a chance of different level
+            if (((rand() % 100) + 1) < 10) // 10% car goes to random level
+            {
+                car_data->actual_lvl = rand() % (LEVELS);
+            }
+            else
+            {
+                car_data->actual_lvl = car_data->directed_lvl;
+            }
+            // car_data->actual_lvl = car_data->directed_lvl;
             level_lpr_data->car = car_data;
             LPR_t *directed_level_LPR;
             get_lpr(shm, car_data->actual_lvl, &directed_level_LPR);
@@ -235,19 +311,6 @@ void *handle_entrance_boomgate(void *data)
     printf("Boom Gate Quit before broadcast %p...\n", boom_gate);
     return NULL;
 }
-
-// void assign_cars(void *arg)
-// {
-//     // Car logic stuff
-//     pthread_t car;
-//     car_t *car_data = malloc(sizeof(car_t));
-//     char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
-//     strcpy(plate_copy, lpr->plate);
-//     car_data->plate = plate_copy;
-//     int level = sign->display - '0';
-//     car_data->directed_lvl = level;
-//     pthread_create(&car, NULL, car_logic, (void *)car_data);
-// }
 
 void *generate_cars(void *arg)
 {
@@ -351,7 +414,7 @@ void *generate_cars(void *arg)
 
         char *plate_string = malloc(sizeof(char) * 7);
         // plate_string[6] = '\0';
-        strcpy(plate_string, six_d_plate);
+        strncpy(plate_string, six_d_plate, 6);
         if (htab_find(hashtable, plate_string) == NULL)
         {
             pthread_mutex_lock(&entrance_datas[rand_entrance].queue_mutex);
@@ -365,15 +428,15 @@ void *generate_cars(void *arg)
         }
         else
         {
-            printf("%s has already been generated\n", plate_string);
+            // printf("%s has already been generated\n", plate_string);
         }
 
-        // printf("%s queued to %p: queue #%d \n", six_d_plate, entrance_datas[rand_entrance].entrance_queue, rand_entrance);
-        for (int i = 0; i < ENTRANCES; i++)
-        {
-            // printf("Entrace %d: ", i);
-            // print_queue(entrance_datas[i].entrance_queue);
-        }
+        // printf("%s queued to queue #%d at %Lf\n", six_d_plate, rand_entrance, get_time());
+        // for (int i = 0; i < ENTRANCES; i++)
+        // {
+        //     printf("Entrace %d: ", i);
+        //     print_queue(entrance_datas[i].entrance_queue);
+        // }
         // printf("\n");
     }
 

@@ -40,8 +40,12 @@ static pthread_cond_t initialisation_cond = PTHREAD_COND_INITIALIZER;
 static htab_t hashtable;
 static capacity_t capacity;
 
+double total_revenue = 0.00;
+
 int main()
 {
+    srand(time(NULL));
+
     shared_memory_t shm;
 
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, 0);
@@ -57,7 +61,7 @@ int main()
 
     // Initialise Capcity
     init_capacity(&capacity);
-    print_capacity(&capacity);
+    // print_capacity(&capacity);
 
     printf("Manager started.\n");
     if (get_shared_object(&shm))
@@ -101,6 +105,8 @@ int main()
         level_data[i].hashtable = &hashtable;
         level_data[i].capacity = &capacity;
         level_data[i].level = i + 1;
+        level_data[i].total_revenue = &total_revenue;
+        pthread_mutex_init(&level_data[i].total_rev_mutex, NULL);
         pthread_create(&level_lpr[i], NULL, monitor_lpr, (void *)&level_data[i]);
     }
 
@@ -114,6 +120,45 @@ int main()
     printf("Start Monitor Thread.\n");
     pthread_create(&monitor_sim_thread, NULL, wait_sim_close, (void *)NULL);
 
+    setvbuf(stdout, NULL, _IOFBF, 2000);
+    do
+    {
+        system("clear");
+        // Signs Display
+        printf("Car Park Group 99\n\n");
+        print_capacity(&capacity);
+        printf("\t Total Revenue: $%0.2lf", total_revenue);
+        if (capacity.full)
+        {
+            printf("\033[1;31m");
+            printf("\tCARPARK FULL");
+            printf("\033[0;37m");
+        }
+        printf("\n");
+
+        for (int i = 0; i < ENTRANCES; i++)
+        {
+            printf("Entrance: %d \t| License Plate Reader: %s\t| Boom Gate: %c\t| Sign: %c\n", i + 1, entrance_data[i].entrance->lpr.plate, entrance_data[i].entrance->boom_gate.status, entrance_data[i].entrance->info_sign.display);
+        }
+        printf("\n");
+
+        for (int i = 0; i < LEVELS; i++)
+        {
+            printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL);
+        }
+        printf("\n");
+
+        // for (int i = 0; i < EXITS; i++)
+        // {
+        //     printf("Exit: %d \t| License Plate Reader: %s\t| Boom Gate: %c\n", i + 1, | BOOM GATE STATE |, exit_lps_current[i]);
+        // }
+
+        printf("\n");
+        fflush(stdout);
+        msleep(10);
+
+    } while (true);
+
     pthread_join(monitor_sim_thread, NULL);
     printf("=================.\n");
     printf("Joined Monitor Thread.\n");
@@ -123,12 +168,5 @@ int main()
 
     printf("Manager Exited.\n");
 
-    for (size_t i = 0; i < ENTRANCES; i++)
-    {
-        get_entrance(&shm, i, &entrance);
-        boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
-        boom_gate = &entrance->boom_gate;
-        printf("Final Boomgate %p status: %c\n", boom_gate, boom_gate->status);
-    }
     return 0;
 }

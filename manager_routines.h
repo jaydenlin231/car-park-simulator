@@ -25,6 +25,8 @@ typedef struct manager_lpr_data
     htab_t *hashtable;
     capacity_t *capacity;
     int level;
+    double *total_revenue;
+    pthread_mutex_t total_rev_mutex;
 
 } manager_lpr_data_t;
 
