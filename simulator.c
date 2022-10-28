@@ -33,6 +33,8 @@
 
 sem_t *manager_ended_sem;
 
+static htab_t car_hashtable;
+
 int main()
 {
     shared_memory_t shm;
@@ -78,6 +80,8 @@ int main()
         return -1;
     }
 
+    htab_init(&car_hashtable, (LEVELS * NUM_SPOTS_LVL));
+
     printf("Waiting for Manager to connect to shm.\n");
     sem_wait(shm_established_sem);
     printf("Manager connected to shm.\n");
@@ -108,6 +112,7 @@ int main()
         get_entrance(&shm, i, &entrance);
         entrance_datas[i].entrance = entrance;
         entrance_datas[i].entrance_queue = create_queue();
+        entrance_datas[i].car_table = &car_hashtable;
         pthread_mutex_init(&entrance_datas[i].queue_mutex, NULL);
         pthread_cond_init(&entrance_datas[i].cond, NULL);
         sem_init(&entrance_datas[i].entrance_LPR_free, SEM_SHARED, 1);
@@ -115,6 +120,7 @@ int main()
 
         entrance_data_shms[i].entrance = entrance;
         entrance_data_shms[i].shm = &shm;
+
         // boom_gate_t *boom_gate = &entrance->boom_gate;
         pthread_create(&entrance_threads[i], NULL, handle_entrance_boomgate, (void *)&entrance_data_shms[i]);
     }

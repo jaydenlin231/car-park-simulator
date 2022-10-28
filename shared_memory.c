@@ -236,7 +236,7 @@ void init_shared_memory_data(shared_memory_t *shm)
         pthread_mutex_init(&level->lpr.mutex, &mutexattr);
         pthread_cond_init(&level->lpr.cond, &condattr);
         printf("Level %ld: %p\n", i, level);
-        printf("!!!!!!!!!!Initialised LPR address %p\n", &level->lpr);
+        // printf("!!!!!!!!!!Initialised LPR address %p\n", &level->lpr);
         // TODO: init LRP data here
     }
 

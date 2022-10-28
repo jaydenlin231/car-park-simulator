@@ -10,6 +10,7 @@ typedef struct entrance_data
     pthread_mutex_t queue_mutex;
     pthread_cond_t cond;
     sem_t entrance_LPR_free;
+    htab_t *car_table;
 
 } entrance_data_t;
 
