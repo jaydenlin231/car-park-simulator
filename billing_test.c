@@ -20,7 +20,7 @@
 #define MAX_LINE_LENGTH 7
 #define MAX_IMPORTED_PLATES 100
 
-// gcc -o test test.c hashtable.c -lm
+// gcc -o billing_test billing_test.c hashtable.c -lm
 
 /* msleep(): Sleep for the requested number of milliseconds. */
 int msleep(long msec)
@@ -43,44 +43,6 @@ int msleep(long msec)
     } while (res && errno == EINTR);
 
     return res;
-}
-
-htab_t import_htable(char fname[])
-{
-    htab_t htable;
-    FILE *textfile;
-    char line[MAX_LINE_LENGTH];
-    int plates_quantity = 0;
-
-    if (!htab_init(&htable, MAX_IMPORTED_PLATES))
-    {
-        printf("Error initialising htable\n");
-    }
-
-    textfile = fopen(fname, "r");
-    if (textfile == NULL)
-    {
-        printf("Error reading plates file");
-    }
-
-    while (plates_quantity < MAX_IMPORTED_PLATES && fscanf(textfile, "%s", line) != EOF)
-    {
-        // printf("Read line %s.\n", line);
-        char *plate_copy = malloc(sizeof(char) * (strlen(line) + 1));
-        strcpy(plate_copy, line);
-        plates_quantity++;
-        if (htab_find(&htable, plate_copy) != NULL)
-        {
-            printf("Duplicated item in htable\n");
-            continue;
-        }
-        if (!htab_add(&htable, plate_copy))
-        {
-            printf("Failed to add item into htable\n");
-        }
-    }
-    fclose(textfile);
-    return htable;
 }
 
 long double get_time()
@@ -112,8 +74,10 @@ void calc_bill(htab_t *h, char *s)
     {
         long double exit_time = get_time();
         long double delta_time = exit_time - item->entry_time;
-        double rounded = floorf(delta_time * 1000) / 1000;
-        printf("parked for %.3lf seconds\n", rounded);
+        int delta_ms = delta_time * 1000;
+        int delta_ms_rounded = ((delta_ms + 5 / 2) / 5) * 5;
+        double rounded = delta_ms_rounded / 1000.0;
+        printf("parked for %lf seconds\n", rounded);
         double bill = rounded * 50;
 
         // Write to billing.txt file
@@ -142,7 +106,8 @@ int main()
     start_time(&hashtable, plate);
 
     // Random time the car parks inside the parking
-    msleep(111);
+    // msleep(249);
+    usleep(249000);
 
     // As the car leaves exit call calc_bill
     calc_bill(&hashtable, plate);

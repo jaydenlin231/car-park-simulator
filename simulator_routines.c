@@ -81,13 +81,13 @@ void *handle_entrance_queue(void *data)
     }
 }
 
-void *handle_level_lpr(void *data)
-{
-    // if lpr->plate != Null
-    // signal to manager to read the plate in lpr
+// void *handle_level_lpr(void *data)
+// {
+//     // if lpr->plate != Null
+//     // signal to manager to read the plate in lpr
 
-    // clear lpr->plate ???
-}
+//     // clear lpr->plate ???
+// }
 
 void *car_logic(void *data)
 {
@@ -95,30 +95,18 @@ void *car_logic(void *data)
     level_lpr_data_t *level_lpr_data = (level_lpr_data_t *)data;
     car_t *car = level_lpr_data->car;
     LPR_t *lpr = level_lpr_data->lpr;
+    htab_t *hashtable = level_lpr_data->car_table;
 
     msleep(10 * TIME_MULTIPLIER); // Takes 10ms to go to its parking spot
 
     // printf("Attemp to change level LPR\n");
-    if (pthread_mutex_lock(&lpr->mutex) != 0)
-    {
-        perror("pthread_mutex_lock(&level_lpr->mutex)");
-        exit(1);
-    };
+    pthread_mutex_lock(&lpr->mutex);
     for (int i = 0; i < 6; i++)
     {
         lpr->plate[i] = car->plate[i];
     }
-    // printf("Broadcast LPR\n");
-    if (pthread_cond_broadcast(&lpr->cond) != 0)
-    {
-        perror("pthread_cond_broadcast(&level_lpr->mutex)");
-        exit(1);
-    };
-    if (pthread_mutex_unlock(&lpr->mutex) != 0)
-    {
-        perror("pthread_mutex_unlock(&level_lpr->mutex)");
-        exit(1);
-    };
+    pthread_cond_broadcast(&lpr->cond);
+    pthread_mutex_unlock(&lpr->mutex);
     // Trigger level LPR here prob with mutex locks and conds
     // pthread_mutex_lock
     // Then the manager sees the level LPR has been triggerd
@@ -132,11 +120,31 @@ void *car_logic(void *data)
 
     // printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
 
-    msleep(1 * TIME_MULTIPLIER); // Park for 10-10000ms
+    msleep(500 * TIME_MULTIPLIER); // Park for 10-10000ms
+
     // Trigger level LPR again when exiting
+    pthread_mutex_lock(&lpr->mutex);
+    for (int i = 0; i < 6; i++)
+    {
+        lpr->plate[i] = car->plate[i];
+    }
+    pthread_cond_broadcast(&lpr->cond);
+    pthread_mutex_unlock(&lpr->mutex);
 
     // Queue up at exit
+    // msleep(10 * TIME_MULTIPLIER); // Takes 10ms to go to exit
 
+    if (pthread_mutex_lock(&hashtable->mutex) != 0)
+    {
+        perror("pthread_mutex_lock(&hashtable->mutex)");
+        exit(1);
+    };
+    htab_delete(hashtable, car->plate);
+    if (pthread_mutex_unlock(&hashtable->mutex) != 0)
+    {
+        perror("pthread_mutex_unlock(&hashtable->mutex)");
+        exit(1);
+    };
     // printf("==================================\n");
     // printf("The car: %s has now left\n", car->plate);
     // printf("==================================\n");
@@ -151,6 +159,7 @@ void *handle_entrance_boomgate(void *data)
     boom_gate_t *boom_gate = &entrance->boom_gate;
     LPR_t *lpr = &entrance->lpr;
     info_sign_t *sign = &entrance->info_sign;
+    htab_t *hashtable = entrance_data_shm->car_table;
 
     printf("Created Boom Gate %p Thread\n", boom_gate);
 
@@ -195,15 +204,18 @@ void *handle_entrance_boomgate(void *data)
             // Car logic stuff
             pthread_t car;
             level_lpr_data_t *level_lpr_data = malloc(sizeof(level_lpr_data_t));
+            level_lpr_data->car_table = hashtable;
             car_t *car_data = malloc(sizeof(car_t));
             char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
             strcpy(plate_copy, lpr->plate);
+            // htab_add(hashtable, plate_copy);
             car_data->plate = plate_copy;
             int level = (sign->display - '0') - 1;
             car_data->directed_lvl = level;
+            car_data->actual_lvl = car_data->directed_lvl; // Add a chance of different level
             level_lpr_data->car = car_data;
             LPR_t *directed_level_LPR;
-            get_lpr(shm, level, &directed_level_LPR);
+            get_lpr(shm, car_data->actual_lvl, &directed_level_LPR);
             level_lpr_data->lpr = directed_level_LPR;
             // printf("Car wants to go to zero index: %d\n", level);
             pthread_create(&car, NULL, car_logic, (void *)level_lpr_data);
@@ -292,8 +304,8 @@ void *generate_cars(void *arg)
         int rand_car_gen_time = (rand() % 100) + 1;
         pthread_mutex_unlock(&lock_rand_num);
 
-        // msleep(rand_car_gen_time * TIME_MULTIPLIER);
-        msleep(100);
+        msleep((rand_car_gen_time / 10) * TIME_MULTIPLIER);
+        // msleep(100);
         // char result;
         pthread_mutex_lock(&lock_rand_num);
         int halfChance = rand() % 2;
@@ -340,24 +352,29 @@ void *generate_cars(void *arg)
         char *plate_string = malloc(sizeof(char) * 7);
         // plate_string[6] = '\0';
         strcpy(plate_string, six_d_plate);
-        pthread_mutex_lock(&entrance_datas[rand_entrance].queue_mutex);
         if (htab_find(hashtable, plate_string) == NULL)
         {
-            htab_add(hashtable, plate_string);
+            pthread_mutex_lock(&entrance_datas[rand_entrance].queue_mutex);
             enqueue(entrance_datas[rand_entrance].entrance_queue, plate_string);
+            pthread_cond_broadcast(&entrance_datas[rand_entrance].cond);
+            pthread_mutex_unlock(&entrance_datas[rand_entrance].queue_mutex);
+
+            pthread_mutex_lock(&hashtable->mutex);
+            htab_add(hashtable, plate_string);
+            pthread_mutex_unlock(&hashtable->mutex);
         }
-
-        pthread_cond_broadcast(&entrance_datas[rand_entrance].cond);
-
-        pthread_mutex_unlock(&entrance_datas[rand_entrance].queue_mutex);
+        else
+        {
+            printf("%s has already been generated\n", plate_string);
+        }
 
         // printf("%s queued to %p: queue #%d \n", six_d_plate, entrance_datas[rand_entrance].entrance_queue, rand_entrance);
         for (int i = 0; i < ENTRANCES; i++)
         {
-            printf("Entrace %d: ", i);
-            print_queue(entrance_datas[i].entrance_queue);
+            // printf("Entrace %d: ", i);
+            // print_queue(entrance_datas[i].entrance_queue);
         }
-        printf("\n");
+        // printf("\n");
     }
 
     return (NULL);

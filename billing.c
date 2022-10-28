@@ -30,8 +30,10 @@ void calc_bill(htab_t *h, char *s)
     {
         long double exit_time = get_time();
         long double delta_time = exit_time - item->entry_time;
-        double rounded = floorf(delta_time * 1000) / 1000;
-        printf("parked for %.3lf seconds\n", rounded);
+        int delta_ms = delta_time * 1000;
+        int delta_ms_rounded = ((delta_ms + 5 / 2) / 5) * 5;
+        double rounded = delta_ms_rounded / 1000.0;
+        printf("parked for %lf seconds\n", rounded);
         double bill = rounded * 50;
 
         // Write to billing.txt file

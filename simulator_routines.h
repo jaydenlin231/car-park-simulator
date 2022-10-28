@@ -18,7 +18,7 @@ typedef struct entrance_data_shm
 {
     entrance_t *entrance;
     shared_memory_t *shm;
-
+    htab_t *car_table;
 } entrance_data_shm_t;
 
 typedef struct car
@@ -33,6 +33,7 @@ typedef struct level_lpr_data
 {
     car_t *car;
     LPR_t *lpr;
+    htab_t *car_table;
 
 } level_lpr_data_t;
 

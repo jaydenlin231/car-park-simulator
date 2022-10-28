@@ -15,14 +15,14 @@ void *control_boom_gate(boom_gate_t *boom_gate, char update_status)
     if (update_status == BG_RAISING)
     {
         // pthread_mutex_lock(&boom_gate->mutex);
-        printf("Instruct Boom Gate %p Raising\n", boom_gate);
+        // printf("Instruct Boom Gate %p Raising\n", boom_gate);
         boom_gate->status = BG_RAISING;
         // pthread_mutex_unlock(&boom_gate->mutex);
         pthread_cond_broadcast(&boom_gate->cond);
     }
     else if (update_status == BG_LOWERING)
     {
-        printf("Instruct Boom Gate Lowering\n");
+        // printf("Instruct Boom Gate Lowering\n");
         // pthread_mutex_lock(&boom_gate->mutex);
         boom_gate->status = BG_LOWERING;
         // pthread_mutex_unlock(&boom_gate->mutex);
@@ -55,13 +55,14 @@ void *monitor_entrance(void *data)
             pthread_cond_wait(&LPR->cond, &LPR->mutex);
         }
 
-        printf("%s is at the LPR\n", LPR->plate);
+        printf("%s is at the entrance LPR\n", LPR->plate);
         item_t *permitted_car = htab_find(hashtable, LPR->plate);
         if (permitted_car != NULL)
         {
             printf("%s is in the permitted list\n", permitted_car->key);
-            // msleep(1 * TIME_MULTIPLIER);
+            pthread_mutex_lock(&capacity->mutex);
             int directed_lvl = get_empty_spot(capacity);
+            pthread_mutex_unlock(&capacity->mutex);
             permitted_car->directed_lvl = directed_lvl;
             // permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
             if (directed_lvl != NULL)
@@ -77,29 +78,29 @@ void *monitor_entrance(void *data)
                 control_boom_gate(boom_gate, BG_RAISING);
                 while (!(boom_gate->status == BG_OPENED))
                 {
-                    printf("\tBoom Gate %p Cond Wait BG_OPENED. Current Status: %c.\n", boom_gate, boom_gate->status);
+                    // printf("\tBoom Gate %p Cond Wait BG_OPENED. Current Status: %c.\n", boom_gate, boom_gate->status);
                     pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
-                    printf("\tBoom Gate %p After Cond Wait BG_OPENED. Current Status: %c.\n", boom_gate, boom_gate->status);
+                    // printf("\tBoom Gate %p After Cond Wait BG_OPENED. Current Status: %c.\n", boom_gate, boom_gate->status);
                 }
                 pthread_mutex_unlock(&boom_gate->mutex);
 
                 if (boom_gate->status == BG_OPENED)
                 {
-                    printf("Lowering Boom Gate %p...\n", boom_gate);
-                    printf("Currently Open for 20 ms\n"); // The car is travelling to its spot as soon as it opened
-                    msleep(20 * TIME_MULTIPLIER);         // Lower after 20ms
+                    // printf("Lowering Boom Gate %p...\n", boom_gate);
+                    // printf("Currently Open for 20 ms\n"); // The car is travelling to its spot as soon as it opened
+                    msleep(20 * TIME_MULTIPLIER); // Lower after 20ms
                     pthread_mutex_lock(&boom_gate->mutex);
                     boom_gate->status = BG_LOWERING;
-                    printf("Boom Gate %p Lowered\n", boom_gate);
+                    // printf("Boom Gate %p Lowered\n", boom_gate);
                     pthread_mutex_unlock(&boom_gate->mutex);
                     pthread_cond_broadcast(&boom_gate->cond);
                 }
                 pthread_mutex_lock(&boom_gate->mutex);
                 while (!(boom_gate->status == BG_CLOSED))
                 {
-                    printf("\tBoom Gate %p Cond Wait BG_CLOSED. Current Status: %c.\n", boom_gate, boom_gate->status);
+                    // printf("\tBoom Gate %p Cond Wait BG_CLOSED. Current Status: %c.\n", boom_gate, boom_gate->status);
                     pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
-                    printf("\tBoom Gate %p After Cond Wait BG_CLOSED. Current Status: %c.\n", boom_gate, boom_gate->status);
+                    // printf("\tBoom Gate %p After Cond Wait BG_CLOSED. Current Status: %c.\n", boom_gate, boom_gate->status);
                 }
                 pthread_mutex_unlock(&boom_gate->mutex);
             }
@@ -110,12 +111,6 @@ void *monitor_entrance(void *data)
         }
 
         if (pthread_mutex_unlock(&LPR->mutex) != 0)
-        {
-            perror("pthread_mutex_unlock(&LPR->mutex)");
-            exit(1);
-        };
-
-        if (pthread_mutex_lock(&LPR->mutex) != 0)
         {
             perror("pthread_mutex_unlock(&LPR->mutex)");
             exit(1);
@@ -136,50 +131,46 @@ void *monitor_lpr(void *data)
     LPR_t *level_lpr = manager_lpr_data->lpr;
     capacity_t *capacity = manager_lpr_data->capacity;
     htab_t *hashtable = manager_lpr_data->hashtable;
-    int level = manager_lpr_data->level - 1;
+    int level = manager_lpr_data->level;
 
     while (true)
     {
-        if (pthread_mutex_lock(&level_lpr->mutex) != 0)
-        {
-            perror("pthread_mutex_lock(&level_lpr->mutex)");
-            exit(1);
-        };
+        pthread_mutex_lock(&level_lpr->mutex);
         while (level_lpr->plate[0] == NULL)
         {
-            printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
+            // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
             pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
         }
-        if (pthread_mutex_unlock(&level_lpr->mutex) != 0)
-        {
-            perror("pthread_mutex_unlock(&level_lpr->mutex)");
-            exit(1);
-        };
+        pthread_mutex_lock(&level_lpr->mutex);
         printf("%s is at the level %d LPR\n", level_lpr->plate, level);
         item_t *car = htab_find(hashtable, level_lpr->plate);
+        pthread_mutex_lock(&capacity->mutex);
         if (car->entry_time == 0)
         {
-            printf("Just Parked!\n");
+            printf("%s just parked!\n", car->key);
             car->actual_lvl = level;
             start_time(hashtable, car->key);
-            pthread_mutex_lock(&capacity->mutex);
             set_capacity(capacity, level);
-            pthread_mutex_unlock(&capacity->mutex);
             print_capacity(capacity);
         }
         else
         {
-            printf("Left carpark!\n");
+            printf("%s left carpark!\n", car->key);
             calc_bill(hashtable, car->key);
+            free_carpark_space(capacity, level);
             car->entry_time == 0;
+            print_capacity(capacity);
         }
+        pthread_mutex_unlock(&capacity->mutex);
 
         // Clear LPR
         for (int i = 0; i < 6; i++)
         {
             level_lpr->plate[i] = NULL;
         }
+
         pthread_cond_broadcast(&level_lpr->cond);
+        pthread_mutex_unlock(&level_lpr->mutex);
     }
 }
 

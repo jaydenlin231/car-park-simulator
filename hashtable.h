@@ -1,6 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 #define MAX_LINE_LENGTH 7
 #define MAX_IMPORTED_PLATES 100
@@ -20,6 +21,7 @@ struct item
 // A hash table mapping a string to an integer.
 typedef struct htab
 {
+    pthread_mutex_t mutex;
     item_t **buckets;
     size_t size;
 

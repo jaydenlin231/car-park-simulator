@@ -120,6 +120,7 @@ int main()
 
         entrance_data_shms[i].entrance = entrance;
         entrance_data_shms[i].shm = &shm;
+        entrance_data_shms[i].car_table = &car_hashtable;
 
         // boom_gate_t *boom_gate = &entrance->boom_gate;
         pthread_create(&entrance_threads[i], NULL, handle_entrance_boomgate, (void *)&entrance_data_shms[i]);
