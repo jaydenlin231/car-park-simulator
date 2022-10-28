@@ -26,7 +26,7 @@ int get_set_empty_spot(capacity_t *capacity)
     }
     // Carpark Full
     capacity->full = true;
-    return NULL;
+    return 0;
 }
 
 void free_carpark_space(capacity_t *capacity, int level)

@@ -79,7 +79,7 @@ int main()
     }
 
     printf("Waiting for Manager to connect to shm.\n");
-    sem_wait(shm_established_sem);
+    // sem_wait(shm_established_sem);
     printf("Manager connected to shm.\n");
 
     init_entrance_data(&shm);
@@ -87,16 +87,19 @@ int main()
 
     pthread_t car_generation_thread;
     pthread_t monitor_sim_thread;
+    pthread_t thread_fire;
 
     pthread_t entrance_threads[ENTRANCES];
     pthread_t entrance_queue_threads[ENTRANCES];
     // pthread_t exit_threads[EXITS];
     // pthread_t level_threads[LEVELS];
+    pthread_t sensor_eachLevel[LEVELS];
 
     queue_t *entrance_queues[ENTRANCES];
     // sh_entrance_data_t *sh_entrance_data = malloc(sizeof(sh_entrance_data_t));
 
     entrance_data_t entrance_datas[ENTRANCES];
+    sensor_data_t level_sensor_datas[LEVELS];
 
     printf("Init Entrance threads.\n");
 
@@ -126,34 +129,75 @@ int main()
     //     *data = i;
     //     pthread_create(&level_threads[i], NULL, test_thread, (void *)data);
     // }
+    level_t *levels;
+    entrance_t *entrances;
+    exit_t * exits;
+    for(int i = 0; i < LEVELS; i++)
+    {
+        get_level(&shm, i , &levels);
+        get_entrance(&shm, i, &entrances);
+        get_exit(&shm, i, &exits);
+        level_sensor_datas[i].level = levels;
+        level_sensor_datas[i].entrance = entrances;
+        level_sensor_datas[i].exit = exits;
+        pthread_mutex_init(&level_sensor_datas[i].m, NULL);
+        pthread_cond_init(&level_sensor_datas[i].c, NULL);
+        sem_init(&level_sensor_datas[i].sim_to_man, SEM_SHARED, 1);
+    }
+    pthread_create(&thread_fire, NULL, sim_fire_sensors, (void*)level_sensor_datas);
+    char c;
+    printf("Choose Temperature Generation Type \nF - Fixed Temp\nR - Rate of Rise\nOr C to Close\n -> ");
+        
+    scanf(" %c", &c);
+    while(c != 'C'){
+        switch (c)
+        {
+        case 'N':
+            level_sensor_datas->type = 'N';
+            printf("Setting Temp generation cycle to Normal");
+            break;
+        case 'F':
+            level_sensor_datas->type = 'F';
+            printf("Setting Temp generation cycle to Fixed Temp");
+            break;
+        case 'R':
+            level_sensor_datas->type = 'R';
+            printf("Setting Temp generation cycle to Rate of Rise");
+            break; 
+        default:
+            printf("Unrecognised Input");
+        }
+        printf("\n -> ");
+        scanf(" %c", &c);
+    }
+    
+    // printf("=================.\n");
+    // printf("Start Monitor Thread.\n");
+    // pthread_create(&monitor_sim_thread, NULL, wait_manager_close, (void *)manager_ended_sem);
 
-    printf("=================.\n");
-    printf("Start Monitor Thread.\n");
-    pthread_create(&monitor_sim_thread, NULL, wait_manager_close, (void *)manager_ended_sem);
+    // sem_post(simulation_ready_sem);
+    // printf("Simulation ready to start\n");
+    // printf("Waiting for manager ready\n");
 
-    sem_post(simulation_ready_sem);
-    printf("Simulation ready to start\n");
-    printf("Waiting for manager ready\n");
+    // sem_wait(manager_ready_sem);
 
-    sem_wait(manager_ready_sem);
+    // printf("=================.\n");
+    // printf("Start Car Thread.\n");
+    // pthread_create(&car_generation_thread, NULL, generate_cars, (void *)&entrance_datas);
 
-    printf("=================.\n");
-    printf("Start Car Thread.\n");
-    pthread_create(&car_generation_thread, NULL, generate_cars, (void *)&entrance_datas);
+    // pthread_join(car_generation_thread, NULL);
+    // printf("=================.\n");
+    // printf("Joined Car Thread.\n");
 
-    pthread_join(car_generation_thread, NULL);
-    printf("=================.\n");
-    printf("Joined Car Thread.\n");
+    // sem_post(simulation_ended_sem);
 
-    sem_post(simulation_ended_sem);
-
-    pthread_join(monitor_sim_thread, NULL);
-    printf("=================.\n");
-    printf("Manager ended.\n");
+    // pthread_join(monitor_sim_thread, NULL);
+    // printf("=================.\n");
+    // printf("Manager ended.\n");
 
     // Might need this?
-    // clean_shared_memory_data(&shm);
-    // printf("clean_shared_memory_data done.\n");
+    clean_shared_memory_data(&shm);
+    printf("clean_shared_memory_data done.\n");
     destroy_shared_object(&shm);
     printf("Destroyed shm.\n");
 

@@ -57,7 +57,7 @@ int main()
 
     // Initialise Capcity
     init_capacity(&capacity);
-    print_capacity(&capacity);
+    // print_capacity(&capacity);
 
     printf("Manager started.\n");
     if (get_shared_object(&shm))

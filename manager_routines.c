@@ -1,5 +1,11 @@
+#include <stdio.h>
+#include <string.h>
 #include <stdbool.h>
 #include <semaphore.h>
+#include <stdlib.h>
+
+
+
 #include "carpark_details.h"
 #include "hashtable.h"
 #include "manager_routines.h"
@@ -48,7 +54,7 @@ void *monitor_entrance(void *data)
             perror("pthread_mutex_lock(&LPR->mutex)");
             exit(1);
         };
-        while (LPR->plate[0] == NULL)
+        while (LPR->plate[0] == '\0')
         {
             // printf("\t\tCond Wait LPR not NULL, currently: %s\n", LPR->plate);
             pthread_cond_wait(&LPR->cond, &LPR->mutex);
@@ -56,14 +62,14 @@ void *monitor_entrance(void *data)
 
         printf("%s is at the LPR\n", LPR->plate);
         item_t *permitted_car = htab_find(hashtable, LPR->plate);
-        if (permitted_car != NULL)
+        if (permitted_car != (item_t*)NULL)
         {
             printf("%s is in the permitted list\n", permitted_car->key);
             // msleep(1 * TIME_MULITIPLIER);
             int directed_lvl = get_set_empty_spot(capacity);
             permitted_car->directed_lvl = directed_lvl;
             permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
-            if (directed_lvl != NULL)
+            if (directed_lvl !=  '\0')
             {
                 pthread_mutex_lock(&info_sign->mutex);
                 info_sign->display = directed_lvl + '0';
@@ -120,10 +126,11 @@ void *monitor_entrance(void *data)
             exit(1);
         };
         // Clear LPR
-        for (int i = 0; i < 6; i++)
-        {
-            LPR->plate[i] = NULL;
-        }
+        // for (int i = 0; i < 6; i++)
+        // {
+        //     LPR->plate[i] = NULL;
+        // }
+        memset(LPR->plate, '\0', sizeof(char)*6);
         pthread_cond_broadcast(&LPR->cond);
         pthread_mutex_unlock(&LPR->mutex);
     }

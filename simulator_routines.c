@@ -1,6 +1,19 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <math.h>
+
+#include <fcntl.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/mman.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <time.h>
+#include <unistd.h>
+#include <inttypes.h>
+#include <semaphore.h>
 
 #include "carpark_details.h"
 #include "shared_memory.h"
@@ -36,7 +49,7 @@ void *handle_entrance_queue(void *data)
             perror("pthread_mutex_lock(&LPR->mutex)");
             exit(1);
         };
-        while (entrance_LPR->plate[0] != NULL)
+        while (entrance_LPR->plate[0] != '\0')
         {
             printf("\t\tCond Wait LPR NULL, currently: %s\n", entrance_LPR->plate);
             pthread_cond_wait(&entrance_LPR->cond, &entrance_LPR->mutex);
@@ -269,4 +282,124 @@ void *wait_manager_close(void *data)
     sem_wait(manager_ended_sem);
     printf("Manager monitor thread Woke\n");
     return NULL;
+}
+
+
+char * toArray(int number)
+{
+    int n = log10(number) + 1;
+    int i;
+    char *numberArray = calloc(n, sizeof(char));
+    for (i = n-1; i >= 0; --i, number /= 10)
+    {
+        numberArray[i] = (number % 10) + '0';
+    }
+    return numberArray;
+}
+
+
+void *sim_fire_sensors(void *data)
+{
+    sensor_data_t *sensor_datas = (sensor_data_t *) data;
+    pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
+    // int a ;
+    while(1){
+        for (int i = 0; i< LEVELS; i++)
+        {
+            char *oldtemp = sensor_datas->level->sensor;
+            if(atoi(oldtemp) == 0)
+            {
+                int normal = 25;
+                char *normal_temp ;
+                normal_temp = toArray(normal);
+                oldtemp = normal_temp;
+                for(int i = 0 ; i < 2; i++)
+                {
+                    sensor_datas->level->sensor[i] = normal_temp[i];
+                    // printf("%s ", sensor_datas->level->sensor[i]);
+                }
+                // sensor_datas->level->sensor[0] = 2 + '0';
+                // sensor_datas->level->sensor[1] = 5 + '0';
+                
+            }
+            pthread_mutex_lock(&lock_rand_num);
+            int num = rand() % 100;
+            pthread_mutex_unlock(&lock_rand_num);
+            switch (sensor_datas->type)
+            {
+            case 'N':
+                if(atoi(oldtemp) > 40){
+                    sensor_datas->level->sensor[0] = 2 ;
+                    sensor_datas->level->sensor[1] = 5 + '0';
+                    for(int i = 0 ; i < 2; i++)
+                    {
+                        printf("%d ", sensor_datas->level->sensor[i]);
+                    }
+                }
+                if(num >= 99){
+                    pthread_mutex_lock(&lock_rand_num);
+
+                    num = rand() % 10;
+                    pthread_mutex_unlock(&lock_rand_num);
+
+
+                    if((num >= 5) & (atoi(oldtemp) > 15))
+                    {
+                        int a = (atoi(oldtemp)) - 1;
+                        char *low_temp1 ;
+                        low_temp1 = toArray(a);
+                        for(int i = 0 ; i < 2; i++)
+                        {
+                            sensor_datas->level->sensor[i] = low_temp1[i];
+                            printf("%d ", sensor_datas->level->sensor[i]);
+
+                        }
+                        // level->temp_sensor = a - 1;
+                    }
+                    
+                    else if(atoi(oldtemp) < 40)
+                    {
+                        int b = (atoi(oldtemp)) + 1;
+                        char *high_temp2 ;
+                        high_temp2 = toArray(b);
+                        for(int i = 0 ; i < 2; i++)
+                        {
+                            sensor_datas->level->sensor[i] = high_temp2[i];
+                            printf("%d ", sensor_datas->level->sensor[i]);
+
+                        }
+                        // level->temp_sensor = oldtemp + 1;
+
+                    }
+                }
+                break;
+            case 'R':
+                if(num >= 60){
+                    int c = (atoi(oldtemp)) + 4;
+                    char *raise_temp ;
+                    raise_temp = toArray(c);
+                    for(int i = 0 ; i < 2; i++)
+                    {
+                        sensor_datas->level->sensor[i] = raise_temp[i];
+                        printf("%d ", sensor_datas->level->sensor[i]);
+
+                    }
+                    // level->temp_sensor = oldtemp + 4;
+                }
+                break;
+            case 'F':
+                sensor_datas->level->sensor[0] = 6 + '0';
+                sensor_datas->level->sensor[1] = 0 + '0';
+                for(int i = 0 ; i < 2; i++)
+                {
+                    printf("%d ", sensor_datas->level->sensor[i]);
+
+                }
+                break;
+            }
+        }
+        usleep(1000);
+    }
+    return NULL;
+
 }
