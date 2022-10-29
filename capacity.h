@@ -14,4 +14,6 @@ typedef struct capacity
 
 void init_capacity(capacity_t *capacity);
 void free_carpark_space(capacity_t *capacity, int level);
-int get_set_empty_spot(capacity_t *capacity);
+int get_empty_spot(capacity_t *capacity);
+void set_capacity(capacity_t *capacity, int level);
+void print_capacity(capacity_t *capacity);

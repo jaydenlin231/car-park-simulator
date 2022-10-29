@@ -33,8 +33,12 @@
 
 sem_t *manager_ended_sem;
 
+static htab_t car_hashtable;
+
 int main()
 {
+    srand(time(NULL));
+
     shared_memory_t shm;
     if (sem_unlink(SHM_EST_SEM_NAME) != 0)
     {
@@ -78,6 +82,8 @@ int main()
         return -1;
     }
 
+    htab_init(&car_hashtable, (LEVELS * NUM_SPOTS_LVL));
+
     printf("Waiting for Manager to connect to shm.\n");
     sem_wait(shm_established_sem);
     printf("Manager connected to shm.\n");
@@ -90,13 +96,11 @@ int main()
 
     pthread_t entrance_threads[ENTRANCES];
     pthread_t entrance_queue_threads[ENTRANCES];
-    // pthread_t exit_threads[EXITS];
     // pthread_t level_threads[LEVELS];
 
     queue_t *entrance_queues[ENTRANCES];
-    // sh_entrance_data_t *sh_entrance_data = malloc(sizeof(sh_entrance_data_t));
-
     entrance_data_t entrance_datas[ENTRANCES];
+    entrance_data_shm_t entrance_data_shms[ENTRANCES];
 
     printf("Init Entrance threads.\n");
 
@@ -106,23 +110,40 @@ int main()
         get_entrance(&shm, i, &entrance);
         entrance_datas[i].entrance = entrance;
         entrance_datas[i].entrance_queue = create_queue();
+        entrance_datas[i].car_table = &car_hashtable;
         pthread_mutex_init(&entrance_datas[i].queue_mutex, NULL);
         pthread_cond_init(&entrance_datas[i].cond, NULL);
         sem_init(&entrance_datas[i].entrance_LPR_free, SEM_SHARED, 1);
-
-        boom_gate_t *boom_gate = &entrance->boom_gate;
-        pthread_create(&entrance_threads[i], NULL, handle_boom_gate, (void *)boom_gate);
         pthread_create(&entrance_queue_threads[i], NULL, handle_entrance_queue, (void *)&entrance_datas[i]);
+
+        entrance_data_shms[i].entrance = entrance;
+        entrance_data_shms[i].shm = &shm;
+        entrance_data_shms[i].car_table = &car_hashtable;
+
+        // boom_gate_t *boom_gate = &entrance->boom_gate;
+        pthread_create(&entrance_threads[i], NULL, handle_entrance_boomgate, (void *)&entrance_data_shms[i]);
     }
-    // // exit_t *exit;
-    // for (int i = 0; i < EXITS; i++) {
-    //     int* data = malloc(sizeof(int));
-    //     *data = i;
-    //     pthread_create(&exit_threads[i], NULL, test_thread, (void *)data);
-    // }
-    // // level_t *level;
-    // for (int i = 0; i < LEVELS; i++) {
-    //     int* data = malloc(sizeof(int));
+
+    pthread_t exit_threads[EXITS];
+    queue_t *exit_queues[EXITS];
+    exit_data_t exit_datas[EXITS];
+    exit_t *exit;
+    for (int i = 0; i < EXITS; i++)
+    {
+        get_exit(&shm, i, &exit);
+        exit_datas[i].exit = exit;
+        exit_datas[i].exit_queue = create_queue();
+        exit_datas[i].car_table = &car_hashtable;
+        pthread_mutex_init(&exit_datas[i].queue_mutex, NULL);
+        pthread_cond_init(&exit_datas[i].cond, NULL);
+        sem_init(&exit_datas[i].exit_LPR_free, SEM_SHARED, 1);
+        pthread_create(&exit_threads[i], NULL, handle_exit_queue, (void *)&exit_datas[i]);
+    }
+
+    // level_t *level;
+    // for (int i = 0; i < LEVELS; i++)
+    // {
+    //     int *data = malloc(sizeof(int));
     //     *data = i;
     //     pthread_create(&level_threads[i], NULL, test_thread, (void *)data);
     // }
@@ -140,6 +161,29 @@ int main()
     printf("=================.\n");
     printf("Start Car Thread.\n");
     pthread_create(&car_generation_thread, NULL, generate_cars, (void *)&entrance_datas);
+
+    setvbuf(stdout, NULL, _IOFBF, 2000);
+    do
+    {
+        system("clear");
+        printf("\e[?25l");
+
+        printf("Car Park Queue\n");
+        // for (int i = 0; i < ENTRANCES; i++)
+        // {
+        //     printf("Entrace: %d \t| %s \n", i + 1, )
+        // }
+
+        for (int i = 0; i < ENTRANCES; i++)
+        {
+            printf("Entrace %d: ", i + 1);
+            print_queue(entrance_datas[i].entrance_queue);
+            printf("\n\n");
+        }
+
+        fflush(stdout);
+        msleep(10);
+    } while (true);
 
     pthread_join(car_generation_thread, NULL);
     printf("=================.\n");
