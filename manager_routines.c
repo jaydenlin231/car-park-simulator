@@ -123,11 +123,11 @@ void *monitor_entrance(void *data)
 
         pthread_mutex_lock(&LPR->mutex);
         // Clear LPR
-        // for (int i = 0; i < 6; i++)
-        // {
-        //     LPR->plate[i] = NULL;
-        // }
-        memset(LPR->plate, '\0', sizeof(char) * 6);
+        for (int i = 0; i < 6; i++)
+        {
+            LPR->plate[i] = NULL;
+        }
+        // memset(LPR->plate, '\0', sizeof(char)*6);
         pthread_cond_broadcast(&LPR->cond);
         pthread_mutex_unlock(&LPR->mutex);
 

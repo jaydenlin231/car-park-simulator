@@ -132,7 +132,6 @@ int main()
     exit_data_t exit_datas[EXITS];
 
     exit_t *exits[EXITS];
-    exit_t *exit;
     for (int i = 0; i < EXITS; i++)
     {
         get_exit(&shm, i, &exits[i]);
@@ -156,7 +155,7 @@ int main()
         get_exit(&shm, i, &exits);
         level_sensor_datas[i].level = levels;
         level_sensor_datas[i].entrance = entrances;
-        level_sensor_datas[i].exit = exits;
+        level_sensor_datas[i].exit = exit;
         pthread_mutex_init(&level_sensor_datas[i].m, NULL);
         pthread_cond_init(&level_sensor_datas[i].c, NULL);
         sem_init(&level_sensor_datas[i].sim_to_man, SEM_SHARED, 1);
@@ -206,6 +205,7 @@ int main()
     // pthread_join(car_generation_thread, NULL);
     // printf("=================.\n");
     // printf("Joined Car Thread.\n");
+
     setvbuf(stdout, NULL, _IOFBF, 2000);
     do
     {
