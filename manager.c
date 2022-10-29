@@ -29,6 +29,7 @@
 #define SIM_END_SEM_NAME "/SIM_ENDED"
 #define MAN_READY_SEM_NAME "/MAN_READY"
 #define MAN_END_SEM_NAME "/MAN_ENDED"
+#define ALARM_READY_SEM_NAME "/ALARM_READY"
 
 #define PLATE_FILE "plates.txt"
 #define MAX_LINE_LENGTH 7
@@ -51,6 +52,8 @@ int main()
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, 0);
     sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, 0);
+    sem_t *alarm_ready_sem = sem_open(ALARM_READY_SEM_NAME, 0);
+
     // simulation_ended_sem = sem_open(SIM_END_SEM_NAME, 0);
     // manager_ended_sem = sem_open(MAN_END_SEM_NAME, 0);
 
@@ -160,6 +163,7 @@ int main()
         for (int i = 0; i < LEVELS; i++)
         {
             printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\t| Temerature: %.2s C\t | Alarm: %.1s\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL, level_data[i].temp, level_data[i].alarm);
+            // printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\t| Temerature: %p C\t | Alarm: %.1s\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL, &level_data[i].temp, level_data[i].alarm);
         }
         printf("\n");
 

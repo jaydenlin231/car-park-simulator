@@ -1,9 +1,9 @@
 #pragma once
 #include <pthread.h>
 
-#define LEVELS 5
+#define LEVELS 1
 #define ENTRANCES 1
-#define EXITS 5
+#define EXITS 1
 #define NUM_SPOTS_LVL 10
 
 #define BG_RAISING ('R')

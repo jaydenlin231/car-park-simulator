@@ -30,6 +30,9 @@
 #define SIM_END_SEM_NAME "/SIM_ENDED"
 #define MAN_READY_SEM_NAME "/MAN_READY"
 #define MAN_END_SEM_NAME "/MAN_ENDED"
+#define ALARM_READY_SEM_NAME "/ALARM_READY"
+
+#define TEMP_MODE 'F'
 
 sem_t *manager_ended_sem;
 
@@ -60,12 +63,17 @@ int main()
     {
         perror("shm_unlink(SIM_END_SEM_NAME) failed");
     }
+    if (sem_unlink(ALARM_READY_SEM_NAME) != 0)
+    {
+        perror("shm_unlink(ALARM_READY_SEM_NAME) failed");
+    }
 
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ended_sem = sem_open(SIM_END_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, O_CREAT, 0644, 0);
     manager_ended_sem = sem_open(MAN_END_SEM_NAME, O_CREAT, 0644, 0);
+    sem_t *alarm_ready_sem = sem_open(ALARM_READY_SEM_NAME, O_CREAT, 0644, 0);
 
     printf("Attempt to create shared memory.\n");
 
@@ -154,28 +162,28 @@ int main()
 
     sem_wait(manager_ready_sem);
 
-    char temp_mode;
+    char temp_mode = TEMP_MODE;
     printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise\n-> ");
-    scanf(" %c", &temp_mode);
-    while (temp_mode == '\0')
-    {
-        switch (temp_mode)
-        {
-        case 'N':
-            printf("Setting Temp generation cycle to Normal\n");
-            break;
-        case 'F':
-            printf("Setting Temp generation cycle to Fixed Temp\n");
-            break;
-        case 'R':
-            printf("Setting Temp generation cycle to Rate of Rise\n");
-            break;
-        default:
-            printf("Unrecognised Input");
-        }
-        printf("\n -> ");
-        scanf(" %c", &temp_mode);
-    }
+    // // scanf(" %c", &temp_mode);
+    // while (temp_mode == '\0')
+    // {
+    //     switch (temp_mode)
+    //     {
+    //     case 'N':
+    //         printf("Setting Temp generation cycle to Normal\n");
+    //         break;
+    //     case 'F':
+    //         printf("Setting Temp generation cycle to Fixed Temp\n");
+    //         break;
+    //     case 'R':
+    //         printf("Setting Temp generation cycle to Rate of Rise\n");
+    //         break;
+    //     default:
+    //         printf("Unrecognised Input");
+    //     }
+    //     printf("\n -> ");
+    //     scanf(" %c", &temp_mode);
+    // }
     pthread_t thread_fire[LEVELS];
     sensor_data_t level_sensor_datas[LEVELS];
     level_t *levels;
@@ -200,24 +208,24 @@ int main()
     printf("Start Car Thread.\n");
     pthread_create(&car_generation_thread, NULL, generate_cars, (void *)&entrance_datas);
 
-    // setvbuf(stdout, NULL, _IOFBF, 2000);
-    // do
-    // {
-    //     system("clear");
-    //     printf("\e[?25l");
+    setvbuf(stdout, NULL, _IOFBF, 2000);
+    do
+    {
+        system("clear");
+        printf("\e[?25l");
 
-    //     printf("Car Park Queue\n");
+        printf("Car Park Queue\n");
 
-    //     for (int i = 0; i < ENTRANCES; i++)
-    //     {
-    //         printf("Entrace %d: ", i + 1);
-    //         print_queue(entrance_datas[i].entrance_queue);
-    //         printf("\n\n");
-    //     }
+        for (int i = 0; i < ENTRANCES; i++)
+        {
+            printf("Entrace %d: ", i + 1);
+            print_queue(entrance_datas[i].entrance_queue);
+            printf("\n\n");
+        }
 
-    //     fflush(stdout);
-    //     msleep(10);
-    // } while (true);
+        fflush(stdout);
+        msleep(10);
+    } while (true);
 
     pthread_join(car_generation_thread, NULL);
     printf("=================.\n");
