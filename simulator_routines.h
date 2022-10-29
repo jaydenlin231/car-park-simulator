@@ -43,13 +43,14 @@ typedef struct car
 typedef struct level_lpr_data
 {
     car_t *car;
-    LPR_t *lpr;
+    LPR_t *level_lpr;
+    LPR_t *exit_lpr;
     htab_t *car_table;
 
 } level_lpr_data_t;
 
 void *handle_entrance_boomgate(void *data);
+void *handle_exit_boomgate(void *data);
 void *handle_entrance_queue(void *data);
 void *generate_cars(void *arg);
-void *handle_exit_queue(void *data);
 void *wait_manager_close(void *data);

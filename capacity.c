@@ -62,5 +62,5 @@ void print_capacity(capacity_t *capacity)
     {
         printf("%d ", capacity->curr_capacity[i]);
     }
-    printf("]");
+    printf("]\t");
 }

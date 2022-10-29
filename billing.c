@@ -19,7 +19,8 @@ void start_time(htab_t *h, char *s)
     }
     else
     {
-        printf("Plate not found in hastable\n");
+
+        // printf("Plate not found in hastable\n");
     }
 }
 
@@ -50,6 +51,6 @@ void calc_bill(htab_t *h, char *s, double *total)
     }
     else
     {
-        printf("Plate not found in hastable\n");
+        // printf("Plate not found in hastable\n");
     }
 }
