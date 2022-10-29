@@ -129,7 +129,6 @@ int main()
     exit_data_t exit_datas[EXITS];
 
     exit_t *exits[EXITS];
-    exit_t *exit;
     for (int i = 0; i < EXITS; i++)
     {
         get_exit(&shm, i, &exits[i]);
