@@ -33,13 +33,26 @@ void set_capacity(capacity_t *capacity, int level)
     if (!capacity->full)
     {
         capacity->curr_capacity[level - 1] += 1;
+        if (!get_empty_spot(capacity))
+        {
+            capacity->full = true;
+        }
     }
 }
 
 void free_carpark_space(capacity_t *capacity, int level)
 {
-    capacity->curr_capacity[level - 1] -= 1;
-    capacity->full = false;
+    int cap = capacity->curr_capacity[level - 1] - 1;
+    if (cap >= 0)
+    {
+        capacity->curr_capacity[level - 1] = cap;
+        capacity->full = false;
+    }
+    else
+    {
+        capacity->curr_capacity[level - 1] = 0;
+        capacity->full = false;
+    }
 }
 
 void print_capacity(capacity_t *capacity)

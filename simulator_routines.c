@@ -184,9 +184,9 @@ void *car_logic(void *data)
     // printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
 
     int rand_park_time = (rand() % (10000 - 10 + 1)) + 10;
-    // printf("Parking for %d ms\n", rand_park_time);
     msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
-    // msleep(15000); // Park for 10-10000ms
+    // msleep(10); // Park for 10-10000ms
+    // printf("Parking for %d ms\n", rand_park_time);
     pthread_mutex_lock(&lpr->mutex);
     while (lpr->plate[0] != NULL)
     {

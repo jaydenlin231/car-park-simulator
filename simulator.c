@@ -166,6 +166,8 @@ int main()
     do
     {
         system("clear");
+        printf("\e[?25l");
+
         printf("Car Park Queue\n");
         // for (int i = 0; i < ENTRANCES; i++)
         // {
@@ -176,7 +178,7 @@ int main()
         {
             printf("Entrace %d: ", i + 1);
             print_queue(entrance_datas[i].entrance_queue);
-            printf("\n");
+            printf("\n\n");
         }
 
         fflush(stdout);

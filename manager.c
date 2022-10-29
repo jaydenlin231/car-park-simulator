@@ -125,13 +125,15 @@ int main()
     {
         system("clear");
         // Signs Display
+        printf("\e[?25l");
         printf("Car Park Group 99\n\n");
+        printf("Total ");
         print_capacity(&capacity);
         printf("\t Total Revenue: $%0.2lf", total_revenue);
         if (capacity.full)
         {
             printf("\033[1;31m");
-            printf("\tCARPARK FULL");
+            printf("\t\tCARPARK FULL");
             printf("\033[0;37m");
         }
         printf("\n");
