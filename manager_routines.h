@@ -24,6 +24,8 @@ typedef struct level_lpr_data
     LPR_t *lpr;
     htab_t *hashtable;
     capacity_t *capacity;
+    char *temp;
+    char *alarm;
     int level;
 
 } level_lpr_data_t;

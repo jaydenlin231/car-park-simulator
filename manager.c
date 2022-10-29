@@ -98,6 +98,8 @@ int main()
         // get_lpr(&shm, i, &lpr);
         get_level(&shm, i, &level);
         level_data[i].lpr = &(level->lpr);
+        level_data[i].temp = &(level->sensor);
+        level_data[i].alarm = &(level->alarm);
         level_data[i].hashtable = &hashtable;
         level_data[i].capacity = &capacity;
         level_data[i].level = i + 1;
@@ -157,7 +159,7 @@ int main()
 
         for (int i = 0; i < LEVELS; i++)
         {
-            printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL);
+            printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\t| Temerature: %.2s C\t | Alarm: %.1s\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL, level_data[i].temp, level_data[i].alarm);
         }
         printf("\n");
 

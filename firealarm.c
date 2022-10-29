@@ -7,8 +7,11 @@
 #include <time.h>
 #include <unistd.h>
 
-int shm_fd;
-volatile void *shm;
+#include "shared_memory.h"
+
+// int shm_fd;
+// volatile void *shm;
+shared_memory_t shm;
 
 int alarm_active = 0;
 pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -67,6 +70,7 @@ void tempmonitor(int level)
     {
         // Calculate address of temperature sensor
         addr = 0150 * level + 2496;
+        // printf("%s\n", addr)
         temp = *((int16_t *)(shm + addr));
 
         // Add temperature to beginning of linked list
@@ -159,8 +163,19 @@ void *openboomgate(void *arg)
 
 int main()
 {
-    shm_fd = shm_open("PARKING", O_RDWR, 0);
-    shm = (volatile void *)mmap(0, 2920, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    // shm_fd = shm_open("/PARKING", O_RDWR, 0);
+    // shm = (volatile void *)mmap(0, 2920, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
+    if (get_shared_object(&shm))
+    {
+        // sem_post(shm_established_sem);
+        printf("Firealarm successfully connected to shm.");
+    }
+    else
+    {
+        perror("Shared memory connection failed.");
+        return -1;
+    }
 
     pthread_t *threads = malloc(sizeof(pthread_t) * LEVELS);
 
@@ -179,6 +194,7 @@ int main()
 
 emergency_mode:
     fprintf(stderr, "*** ALARM ACTIVE ***\n");
+    printf("ACTIVE\n");
 
     // Handle the alarm system and open boom gates
     // Activate alarms on all levels

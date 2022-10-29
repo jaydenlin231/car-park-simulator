@@ -54,9 +54,7 @@ typedef struct exit
 typedef struct level
 {
     LPR_t lpr;
-    // tempSensor_t *tempSensor;
     char sensor[2];
-    // alarm_t *alarm;
     char alarm;
 
 } level_t;
