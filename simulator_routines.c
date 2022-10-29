@@ -302,21 +302,33 @@ void *sim_fire_sensors(void *data)
 {
     sensor_data_t *sensor_datas = (sensor_data_t *) data;
     pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
+    int normal;
+    char *normal_temp;
     // int a ;
+    int fixed;
+    char *fixed_temp; 
     while(1){
         for (int i = 0; i< LEVELS; i++)
         {
             char *oldtemp = sensor_datas->level->sensor;
             if(atoi(oldtemp) == 0)
             {
-                int normal = 25;
+                normal = 25;
                 char *normal_temp ;
                 normal_temp = toArray(normal);
                 oldtemp = normal_temp;
-                for(int i = 0 ; i < 2; i++)
+                // for(int i = 0 ; i < 2; i++)
+                // {
+                //     sensor_datas->level->sensor[i] = normal_temp[i];
+                //     // printf("%s ", sensor_datas->level->sensor[i]);
+                // }
+                for(int i = 0 ; i < 1; i++)
                 {
-                    sensor_datas->level->sensor[i] = normal_temp[i];
-                    // printf("%s ", sensor_datas->level->sensor[i]);
+                    // sensor_datas->level->sensor[i] = fixed_temp[i];
+                    sensor_datas->level->sensor[i] = 2 + '0';
+                    sensor_datas->level->sensor[i+1]= 5 + '0';
+                    printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+
                 }
                 // sensor_datas->level->sensor[0] = 2 + '0';
                 // sensor_datas->level->sensor[1] = 5 + '0';
@@ -329,11 +341,24 @@ void *sim_fire_sensors(void *data)
             {
             case 'N':
                 if(atoi(oldtemp) > 40){
-                    sensor_datas->level->sensor[0] = 2 ;
-                    sensor_datas->level->sensor[1] = 5 + '0';
-                    for(int i = 0 ; i < 2; i++)
+                    // int n = 25;
+                    // char *n_temp;
+                    // n_temp = toArray(n);
+
+                    // sensor_datas->level->sensor[0] = 2 ;
+                    // sensor_datas->level->sensor[1] = 5 + '0';
+                    // for(int i = 0 ; i < 2; i++)
+                    // {
+                    //     sensor_datas->level->sensor[i] = n_temp[i];
+                    //     printf("%d ", sensor_datas->level->sensor[i]);
+                    // }
+                    for(int i = 0 ; i < 1; i++)
                     {
-                        printf("%d ", sensor_datas->level->sensor[i]);
+                        // sensor_datas->level->sensor[i] = fixed_temp[i];
+                        sensor_datas->level->sensor[i] = 2 + '0';
+                        sensor_datas->level->sensor[i+1]= 5 + '0';
+                        printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+
                     }
                 }
                 if(num >= 99){
@@ -348,10 +373,13 @@ void *sim_fire_sensors(void *data)
                         int a = (atoi(oldtemp)) - 1;
                         char *low_temp1 ;
                         low_temp1 = toArray(a);
-                        for(int i = 0 ; i < 2; i++)
+                        for(int i = 0 ; i < 1; i++)
                         {
                             sensor_datas->level->sensor[i] = low_temp1[i];
-                            printf("%d ", sensor_datas->level->sensor[i]);
+                            sensor_datas->level->sensor[i+1] = low_temp1[i+1];
+                            printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+
+                            // printf("%d ", sensor_datas->level->sensor[i]);
 
                         }
                         // level->temp_sensor = a - 1;
@@ -362,10 +390,13 @@ void *sim_fire_sensors(void *data)
                         int b = (atoi(oldtemp)) + 1;
                         char *high_temp2 ;
                         high_temp2 = toArray(b);
-                        for(int i = 0 ; i < 2; i++)
+                        for(int i = 0 ; i < 1; i++)
                         {
                             sensor_datas->level->sensor[i] = high_temp2[i];
-                            printf("%d ", sensor_datas->level->sensor[i]);
+                            sensor_datas->level->sensor[i+1] = high_temp2[i+1];
+                            printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+
+                            // printf("%d ", sensor_datas->level->sensor[i]);
 
                         }
                         // level->temp_sensor = oldtemp + 1;
@@ -378,21 +409,33 @@ void *sim_fire_sensors(void *data)
                     int c = (atoi(oldtemp)) + 4;
                     char *raise_temp ;
                     raise_temp = toArray(c);
-                    for(int i = 0 ; i < 2; i++)
+                    for(int i = 0 ; i < 1; i++)
                     {
                         sensor_datas->level->sensor[i] = raise_temp[i];
-                        printf("%d ", sensor_datas->level->sensor[i]);
+                        sensor_datas->level->sensor[i+1] = raise_temp[i+1];
+                        printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+
+                        // printf("%d ", sensor_datas->level->sensor[i]);
 
                     }
                     // level->temp_sensor = oldtemp + 4;
                 }
                 break;
             case 'F':
-                sensor_datas->level->sensor[0] = 6 + '0';
-                sensor_datas->level->sensor[1] = 0 + '0';
-                for(int i = 0 ; i < 2; i++)
+                // fixed = 60;
+                // // char *fixed_temp; 
+                // fixed_temp = toArray(fixed);
+
+                // sensor_datas->level->sensor[0] = 6 + '0';
+                // sensor_datas->level->sensor[1] = 0 + '0';
+                
+                
+                for(int i = 0 ; i < 1; i++)
                 {
-                    printf("%d ", sensor_datas->level->sensor[i]);
+                    // sensor_datas->level->sensor[i] = fixed_temp[i];
+                    sensor_datas->level->sensor[i] = 6 + '0';
+                    sensor_datas->level->sensor[i+1]= 0 + '0';
+                    printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
 
                 }
                 break;
