@@ -147,12 +147,12 @@ int main()
     // }
     level_t *levels;
     entrance_t *entrances;
-    exit_t *exits;
+    exit_t *exit;
     for (int i = 0; i < LEVELS; i++)
     {
         get_level(&shm, i, &levels);
         get_entrance(&shm, i, &entrances);
-        get_exit(&shm, i, &exits);
+        get_exit(&shm, i, &exit);
         level_sensor_datas[i].level = levels;
         level_sensor_datas[i].entrance = entrances;
         level_sensor_datas[i].exit = exit;
