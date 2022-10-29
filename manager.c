@@ -40,8 +40,12 @@ static pthread_cond_t initialisation_cond = PTHREAD_COND_INITIALIZER;
 static htab_t hashtable;
 static capacity_t capacity;
 
+static double total_revenue = 0.00;
+
 int main()
 {
+    srand(time(NULL));
+
     shared_memory_t shm;
 
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, 0);
@@ -72,20 +76,46 @@ int main()
     }
 
     printf("Init Entrance threads.\n");
-    pthread_t entrance_BG_threads[ENTRANCES];
+    // pthread_t entrance_BG_threads[ENTRANCES];
     pthread_t entrance_threads[ENTRANCES];
     entrance_t *entrance;
-    entrance_data_t entrance_datas[ENTRANCES];
+    entrance_data_t entrance_data[ENTRANCES];
     for (size_t i = 0; i < ENTRANCES; i++)
     {
         get_entrance(&shm, i, &entrance);
-        entrance_datas[i].entrance = entrance;
-        entrance_datas[i].capacity = &capacity;
-        entrance_datas[i].hashtable = &hashtable;
-        boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
-        boom_gate = &entrance->boom_gate;
-        printf("Entrance %ld Boom Gate %p\n", i, &entrance->boom_gate);
-        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_datas[i]);
+        entrance_data[i].entrance = entrance;
+        entrance_data[i].capacity = &capacity;
+        entrance_data[i].hashtable = &hashtable;
+        pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_data[i]);
+    }
+
+    pthread_t level_lpr_threads[LEVELS];
+    // LPR_t *lpr;
+    level_t *level;
+    level_lpr_data_t level_data[LEVELS];
+    for (size_t i = 0; i < LEVELS; i++)
+    {
+        // get_lpr(&shm, i, &lpr);
+        get_level(&shm, i, &level);
+        level_data[i].lpr = &(level->lpr);
+        level_data[i].hashtable = &hashtable;
+        level_data[i].capacity = &capacity;
+        level_data[i].level = i + 1;
+        pthread_create(&level_lpr_threads[i], NULL, monitor_lpr, (void *)&level_data[i]);
+    }
+
+    pthread_t exit_threads[EXITS];
+    exit_t *exit;
+    monitor_exit_t exit_data[EXITS];
+    for (size_t i = 0; i < EXITS; i++)
+    {
+        get_exit(&shm, i, &exit);
+        exit_data[i].exit = exit;
+        exit_data[i].hashtable = &hashtable;
+        exit_data[i].revenue = &total_revenue;
+        exit_data[i].exit_number = i + 1;
+        pthread_mutex_init(&exit_data[i].revenue_mutex, NULL);
+        pthread_create(&exit_threads[i], NULL, monitor_exit, (void *)&exit_data[i]);
     }
 
     printf("Waiting for simulation to ready.\n");
@@ -98,6 +128,47 @@ int main()
     printf("Start Monitor Thread.\n");
     pthread_create(&monitor_sim_thread, NULL, wait_sim_close, (void *)NULL);
 
+    setvbuf(stdout, NULL, _IOFBF, 2000);
+    do
+    {
+        system("clear");
+        // Signs Display
+        printf("\e[?25l");
+        printf("Car Park Group 99\n\n");
+        printf("Total ");
+        print_capacity(&capacity);
+        printf("\nTotal Revenue: $%0.2lf", total_revenue);
+        if (capacity.full)
+        {
+            printf("\033[1;31m");
+            printf("\t\t\t\tCARPARK FULL");
+            printf("\033[0;37m");
+        }
+        printf("\n\n");
+
+        for (int i = 0; i < ENTRANCES; i++)
+        {
+            printf("Entrance: %d \t| License Plate Reader: %s\t| Boom Gate: %c\t| Sign: %c\n", i + 1, entrance_data[i].entrance->lpr.plate, entrance_data[i].entrance->boom_gate.status, entrance_data[i].entrance->info_sign.display);
+        }
+        printf("\n");
+
+        for (int i = 0; i < LEVELS; i++)
+        {
+            printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL);
+        }
+        printf("\n");
+
+        for (int i = 0; i < EXITS; i++)
+        {
+            printf("Exit: %d \t| License Plate Reader: %s\t| Boom Gate: %c\n", i + 1, exit_data[i].exit->lpr.plate, exit_data[i].exit->boom_gate.status);
+        }
+
+        printf("\n");
+        fflush(stdout);
+        msleep(10);
+
+    } while (true);
+
     pthread_join(monitor_sim_thread, NULL);
     printf("=================.\n");
     printf("Joined Monitor Thread.\n");
@@ -107,12 +178,5 @@ int main()
 
     printf("Manager Exited.\n");
 
-    for (size_t i = 0; i < ENTRANCES; i++)
-    {
-        get_entrance(&shm, i, &entrance);
-        boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
-        boom_gate = &entrance->boom_gate;
-        printf("Final Boomgate %p status: %c\n", boom_gate, boom_gate->status);
-    }
     return 0;
 }

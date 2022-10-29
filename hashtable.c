@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 void item_print(item_t *i)
 {
@@ -16,6 +17,7 @@ void item_print(item_t *i)
 //       OR (all buckets are null pointers)
 bool htab_init(htab_t *h, size_t n)
 {
+    pthread_mutex_init(&h->mutex, NULL);
     h->size = n;
     h->buckets = (item_t **)calloc(n, sizeof(item_t *));
     return h->buckets != 0;
