@@ -40,7 +40,7 @@ static pthread_cond_t initialisation_cond = PTHREAD_COND_INITIALIZER;
 static htab_t hashtable;
 static capacity_t capacity;
 
-double total_revenue = 0.00;
+static double total_revenue = 0.00;
 
 int main()
 {
@@ -86,28 +86,36 @@ int main()
         entrance_data[i].entrance = entrance;
         entrance_data[i].capacity = &capacity;
         entrance_data[i].hashtable = &hashtable;
-        boom_gate_t *boom_gate = malloc(sizeof(boom_gate_t));
-        boom_gate = &entrance->boom_gate;
-        printf("Entrance %ld Boom Gate %p\n", i, &entrance->boom_gate);
         pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_data[i]);
     }
 
-    pthread_t level_lpr[LEVELS];
+    pthread_t level_lpr_threads[LEVELS];
     // LPR_t *lpr;
     level_t *level;
-    manager_lpr_data_t level_data[LEVELS];
+    level_lpr_data_t level_data[LEVELS];
     for (size_t i = 0; i < LEVELS; i++)
     {
         // get_lpr(&shm, i, &lpr);
         get_level(&shm, i, &level);
-        printf("level is at %p\n", level);
         level_data[i].lpr = &(level->lpr);
         level_data[i].hashtable = &hashtable;
         level_data[i].capacity = &capacity;
         level_data[i].level = i + 1;
-        level_data[i].total_revenue = &total_revenue;
-        pthread_mutex_init(&level_data[i].total_rev_mutex, NULL);
-        pthread_create(&level_lpr[i], NULL, monitor_lpr, (void *)&level_data[i]);
+        pthread_create(&level_lpr_threads[i], NULL, monitor_lpr, (void *)&level_data[i]);
+    }
+
+    pthread_t exit_threads[EXITS];
+    exit_t *exit;
+    monitor_exit_t exit_data[EXITS];
+    for (size_t i = 0; i < EXITS; i++)
+    {
+        get_exit(&shm, i, &exit);
+        exit_data[i].exit = exit;
+        exit_data[i].hashtable = &hashtable;
+        exit_data[i].revenue = &total_revenue;
+        exit_data[i].exit_number = i + 1;
+        pthread_mutex_init(&exit_data[i].revenue_mutex, NULL);
+        pthread_create(&exit_threads[i], NULL, monitor_exit, (void *)&exit_data[i]);
     }
 
     printf("Waiting for simulation to ready.\n");
@@ -129,14 +137,14 @@ int main()
         printf("Car Park Group 99\n\n");
         printf("Total ");
         print_capacity(&capacity);
-        printf("\t Total Revenue: $%0.2lf", total_revenue);
+        printf("\nTotal Revenue: $%0.2lf", total_revenue);
         if (capacity.full)
         {
             printf("\033[1;31m");
-            printf("\t\tCARPARK FULL");
+            printf("\t\t\t\tCARPARK FULL");
             printf("\033[0;37m");
         }
-        printf("\n");
+        printf("\n\n");
 
         for (int i = 0; i < ENTRANCES; i++)
         {
@@ -150,10 +158,10 @@ int main()
         }
         printf("\n");
 
-        // for (int i = 0; i < EXITS; i++)
-        // {
-        //     printf("Exit: %d \t| License Plate Reader: %s\t| Boom Gate: %c\n", i + 1, | BOOM GATE STATE |, exit_lps_current[i]);
-        // }
+        for (int i = 0; i < EXITS; i++)
+        {
+            printf("Exit: %d \t| License Plate Reader: %s\t| Boom Gate: %c\n", i + 1, exit_data[i].exit->lpr.plate, exit_data[i].exit->boom_gate.status);
+        }
 
         printf("\n");
         fflush(stdout);

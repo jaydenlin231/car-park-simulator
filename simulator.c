@@ -127,17 +127,13 @@ int main()
     pthread_t exit_threads[EXITS];
     queue_t *exit_queues[EXITS];
     exit_data_t exit_datas[EXITS];
+
+    exit_t *exits[EXITS];
     exit_t *exit;
     for (int i = 0; i < EXITS; i++)
     {
-        get_exit(&shm, i, &exit);
-        exit_datas[i].exit = exit;
-        exit_datas[i].exit_queue = create_queue();
-        exit_datas[i].car_table = &car_hashtable;
-        pthread_mutex_init(&exit_datas[i].queue_mutex, NULL);
-        pthread_cond_init(&exit_datas[i].cond, NULL);
-        sem_init(&exit_datas[i].exit_LPR_free, SEM_SHARED, 1);
-        pthread_create(&exit_threads[i], NULL, handle_exit_queue, (void *)&exit_datas[i]);
+        get_exit(&shm, i, &exits[i]);
+        pthread_create(&exit_threads[i], NULL, handle_exit_boomgate, (void *)exits[i]);
     }
 
     // level_t *level;

@@ -15,6 +15,7 @@ struct item
     int directed_lvl;
     int actual_lvl;
     long double entry_time;
+    bool entered;
     item_t *next;
 };
 

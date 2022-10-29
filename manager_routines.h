@@ -19,21 +19,30 @@ typedef struct sim_man_sem_t
     sem_t *manager_ended_sem;
 } sim_man_sem_t;
 
-typedef struct manager_lpr_data
+typedef struct level_lpr_data
 {
     LPR_t *lpr;
     htab_t *hashtable;
     capacity_t *capacity;
     int level;
-    double *total_revenue;
-    pthread_mutex_t total_rev_mutex;
 
-} manager_lpr_data_t;
+} level_lpr_data_t;
+
+typedef struct monitor_exit
+{
+    exit_t *exit;
+    htab_t *hashtable;
+    int exit_number;
+    double *revenue;
+    pthread_mutex_t revenue_mutex;
+
+} monitor_exit_t;
 
 void *control_boom_gate(boom_gate_t *boom_gate, char update_status);
 
 void *monitor_entrance(void *data);
 void *monitor_lpr(void *data);
+void *monitor_exit(void *data);
 
 // void *handle_entrance_boomgate(void *data);
 
