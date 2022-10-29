@@ -153,7 +153,7 @@ void init_shared_memory_data(shared_memory_t *shm)
         perror("pthread_mutexattr_setpshared failed");
         exit(1);
     }
-    if (pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK_NP) != 0)
+    if (pthread_mutexattr_settype(&mutexattr, PTHREAD_MUTEX_ERRORCHECK) != 0)
     {
         perror("pthread_mutexattr_setpshared failed");
         exit(1);
@@ -236,6 +236,7 @@ void init_shared_memory_data(shared_memory_t *shm)
         pthread_mutex_init(&level->lpr.mutex, &mutexattr);
         pthread_cond_init(&level->lpr.cond, &condattr);
         printf("Level %ld: %p\n", i, level);
+        // printf("!!!!!!!!!!Initialised LPR address %p\n", &level->lpr);
         // TODO: init LRP data here
     }
 
@@ -296,5 +297,11 @@ void get_level(shared_memory_t *shm, int i, level_t **level)
 {
     // TODO: error handling and return status code/bool?
     *level = &(shm->data->levels[i]);
+    return;
+}
+void get_lpr(shared_memory_t *shm, int i, LPR_t **lpr)
+{
+    // TODO: error handling and return status code/bool?
+    *lpr = &(shm->data->levels[i].lpr);
     return;
 }
