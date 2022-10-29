@@ -137,7 +137,10 @@ int main()
         printf("Car Park Group 99\n\n");
         printf("Total ");
         print_capacity(&capacity);
-        printf("\nTotal Revenue: $%0.2lf", total_revenue);
+        printf("\nTotal Revenue: ");
+        printf("\033[0;32m");
+        printf("$%0.2lf", total_revenue);
+        printf("\033[0;37m");
         if (capacity.full)
         {
             printf("\033[1;31m");
