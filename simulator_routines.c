@@ -357,7 +357,7 @@ void *sim_fire_sensors(void *data)
                         // sensor_datas->level->sensor[i] = fixed_temp[i];
                         sensor_datas->level->sensor[i] = 2 + '0';
                         sensor_datas->level->sensor[i+1]= 5 + '0';
-                        printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+                        // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
 
                     }
                 }
@@ -377,7 +377,7 @@ void *sim_fire_sensors(void *data)
                         {
                             sensor_datas->level->sensor[i] = low_temp1[i];
                             sensor_datas->level->sensor[i+1] = low_temp1[i+1];
-                            printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+                            // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
 
                             // printf("%d ", sensor_datas->level->sensor[i]);
 
@@ -394,7 +394,7 @@ void *sim_fire_sensors(void *data)
                         {
                             sensor_datas->level->sensor[i] = high_temp2[i];
                             sensor_datas->level->sensor[i+1] = high_temp2[i+1];
-                            printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+                            // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
 
                             // printf("%d ", sensor_datas->level->sensor[i]);
 
@@ -402,7 +402,16 @@ void *sim_fire_sensors(void *data)
                         // level->temp_sensor = oldtemp + 1;
 
                     }
+                    
                 }
+                for(int i = 0 ; i < 1; i++)
+                    {
+                        // sensor_datas->level->sensor[i] = fixed_temp[i];
+                        // sensor_datas->level->sensor[i] = 2 + '0';
+                        // sensor_datas->level->sensor[i+1]= 5 + '0';
+                        printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i+1]);
+
+                    }
                 break;
             case 'R':
                 if(num >= 60){
