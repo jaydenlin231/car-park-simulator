@@ -127,7 +127,7 @@ void *tempmonitor(void *levelArg)
 			// Add median temp to linked list
 			newtemp = malloc(sizeof(struct tempnode));
 			newtemp->temperature = mediantemp;
-			printf("Median Temp:%d\n", mediantemp);
+			// printf("Median Temp:%d\n", mediantemp);
 			newtemp->next = medianlist;
 			medianlist = newtemp;
 
@@ -158,7 +158,7 @@ void *tempmonitor(void *levelArg)
 				// this is considered a high temperature. Raise the alarm
 				if (hightemps >= TEMPCHANGE_WINDOW * 0.9)
 				{
-					printf("Option 1\n");
+					// printf("Option 1\n");
 					alarm_active = 1;
 					sign = shm + addr + 2;
 					*sign = 1;
@@ -170,7 +170,7 @@ void *tempmonitor(void *levelArg)
 				if (templist->temperature - oldesttemp->temperature >= 8 && oldesttemp->temperature != 0)
 				{
 
-					printf("Option 1\n");
+					// printf("Option 1\n");
 					alarm_active = 1;
 					sign = shm + addr + 2;
 					*sign = 1;

@@ -101,7 +101,7 @@ int main()
         // get_lpr(&shm, i, &lpr);
         get_level(&shm, i, &level);
         level_data[i].lpr = &(level->lpr);
-        level_data[i].temp = &(level->sensor);
+        level_data[i].temp = (char *)&(level->sensor);
         level_data[i].alarm = &(level->alarm);
         level_data[i].hashtable = &hashtable;
         level_data[i].capacity = &capacity;

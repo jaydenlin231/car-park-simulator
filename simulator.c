@@ -160,10 +160,9 @@ int main()
     printf("Simulation ready to start\n");
     printf("Waiting for manager ready\n");
 
-
     // char temp_mode = TEMP_MODE;
     char temp_mode;
-    printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise\n-> ");
+    printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise");
     // scanf(" %c", &temp_mode);
     while (temp_mode == '\0')
     {
@@ -178,10 +177,8 @@ int main()
         case 'R':
             printf("Setting Temp generation cycle to Rate of Rise\n");
             break;
-        default:
-            printf("Unrecognised Input");
         }
-        printf("\n -> ");
+        printf("\n ->  ");
         scanf(" %c", &temp_mode);
     }
 

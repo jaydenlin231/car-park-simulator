@@ -44,7 +44,7 @@ void calc_bill(htab_t *h, char *s, double *total)
         *total += bill;
         if (!fprintf(fp, "%s $%.2lf\n", item->key, bill))
         {
-            printf("Error writing\n");
+            // printf("Error writing\n");
         }
         fclose(fp);
         item->entry_time = 0;

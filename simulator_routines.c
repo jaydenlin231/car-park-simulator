@@ -265,14 +265,15 @@ void *handle_entrance_boomgate(void *data)
             exit(1);
         };
         // printf("Boom Gate %p Received Instruction Status: %c.\n", boom_gate, boom_gate->status);
-        if(!(sign->display > '0' && sign->display <= ('0' + LEVELS) && sign->display !='\0' )){
-                printf("The sign displayed %c\n", sign->display);
-                pthread_mutex_lock(&boom_gate->mutex);
-                boom_gate->status = BG_OPENED;
-                // printf("Boom Gate %p Opened\n", boom_gate);
-                pthread_cond_signal(&boom_gate->cond);
-                pthread_mutex_unlock(&boom_gate->mutex);
-                continue;
+        if (!(sign->display > '0' && sign->display <= ('0' + LEVELS) && sign->display != '\0'))
+        {
+            printf("The sign displayed %c\n", sign->display);
+            pthread_mutex_lock(&boom_gate->mutex);
+            boom_gate->status = BG_OPENED;
+            // printf("Boom Gate %p Opened\n", boom_gate);
+            pthread_cond_signal(&boom_gate->cond);
+            pthread_mutex_unlock(&boom_gate->mutex);
+            continue;
         }
         if (boom_gate->status == BG_RAISING)
         {
@@ -388,7 +389,7 @@ void *generate_cars(void *arg)
         int rand_car_gen_time = (rand() % 100) + 1;
         pthread_mutex_unlock(&lock_rand_num);
 
-        msleep((rand_car_gen_time / 10) * TIME_MULTIPLIER);
+        msleep(rand_car_gen_time * TIME_MULTIPLIER);
         // msleep(100);
         // char result;
         pthread_mutex_lock(&lock_rand_num);
@@ -467,9 +468,7 @@ void *generate_cars(void *arg)
 void *wait_manager_close(void *data)
 {
     sem_t *manager_ended_sem = (sem_t *)data;
-    printf("Manager monitor thread waiting.\n");
     sem_wait(manager_ended_sem);
-    printf("Manager monitor thread Woke\n");
     return NULL;
 }
 
@@ -637,7 +636,7 @@ void *sim_fire_sensors(void *data)
                 break;
             }
         }
-        msleep(500);
+        msleep(2 * TIME_MULTIPLIER);
     }
     return NULL;
 }

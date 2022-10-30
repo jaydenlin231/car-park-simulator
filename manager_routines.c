@@ -74,7 +74,7 @@ void *monitor_entrance(void *data)
             pthread_mutex_unlock(&capacity->mutex);
             permitted_car->directed_lvl = directed_lvl;
             // permitted_car->actual_lvl = directed_lvl; // For now actual = directed until we add randomness
-            if (directed_lvl != NULL)
+            if (directed_lvl != 0)
             {
                 pthread_mutex_lock(&info_sign->mutex);
                 info_sign->display = directed_lvl + '0';
@@ -135,14 +135,14 @@ void *monitor_entrance(void *data)
         // Clear LPR
         for (int i = 0; i < 6; i++)
         {
-            LPR->plate[i] = NULL;
+            LPR->plate[i] = '\0';
         }
         // memset(LPR->plate, '\0', sizeof(char)*6);
         pthread_cond_broadcast(&LPR->cond);
         pthread_mutex_unlock(&LPR->mutex);
 
         pthread_mutex_lock(&info_sign->mutex);
-        info_sign->display = NULL;
+        info_sign->display = '\0';
         pthread_mutex_unlock(&info_sign->mutex);
     }
 }
@@ -161,7 +161,7 @@ void *monitor_exit(void *data)
     {
         msleep(2 * TIME_MULTIPLIER);
         pthread_mutex_lock(&exit_LPR->mutex);
-        while (exit_LPR->plate[0] == NULL)
+        while (exit_LPR->plate[0] == '\0')
         {
             // printf("waiting 1\n");
             pthread_cond_wait(&exit_LPR->cond, &exit_LPR->mutex);
@@ -227,7 +227,7 @@ void *monitor_exit(void *data)
         pthread_mutex_lock(&exit_LPR->mutex);
         for (int i = 0; i < 6; i++)
         {
-            exit_LPR->plate[i] = NULL;
+            exit_LPR->plate[i] = '\0';
         }
         pthread_cond_broadcast(&exit_LPR->cond);
         pthread_mutex_unlock(&exit_LPR->mutex);
@@ -245,7 +245,7 @@ void *monitor_lpr(void *data)
     while (true)
     {
         pthread_mutex_lock(&lpr->mutex);
-        while (lpr->plate[0] == NULL)
+        while (lpr->plate[0] == '\0')
         {
             // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
             pthread_cond_wait(&lpr->cond, &lpr->mutex);
@@ -285,7 +285,7 @@ void *monitor_lpr(void *data)
         // Clear LPR
         for (int i = 0; i < 6; i++)
         {
-            lpr->plate[i] = NULL;
+            lpr->plate[i] = '\0';
         }
         pthread_cond_broadcast(&lpr->cond);
         pthread_mutex_unlock(&lpr->mutex);

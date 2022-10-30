@@ -13,6 +13,7 @@
 
 #include "carpark_details.h"
 #include "shared_memory.h"
+#include "utility.h"
 #define ALARM_READY_SEM_NAME "/ALARM_READY"
 
 // #define SEG_NAME "/PARKING"
@@ -247,23 +248,19 @@ void *open_ex_boomgate(void *arg)
 
     do
     {
-        printf("Mutex lock\n");
         pthread_mutex_lock(&bg->mutex);
         if (bg->status != 'O')
         {
-            printf("Raising\n");
             bg->status = 'R';
             pthread_mutex_unlock(&bg->mutex);
             pthread_cond_broadcast(&bg->cond);
         }
         else if (bg->status == 'O')
         {
-            printf("EXIT COND WAIT on status: %c\n", bg->status);
             pthread_cond_wait(&bg->cond, &bg->mutex);
         }
         else
         {
-            printf("Mutex unlock\n");
             pthread_mutex_unlock(&bg->mutex);
         }
     } while (bg->status != 'O');
@@ -283,7 +280,7 @@ int main()
     if (get_shared_object(&shm))
     {
         // sem_post(shm_established_sem);
-        printf("Manager successfully connected to shm.\n");
+        printf("Fire Alarm connected to shm.\n");
     }
     else
     {
@@ -367,7 +364,7 @@ int main()
                 pthread_cond_broadcast((void *)&sign->cond);
                 pthread_mutex_unlock((void *)&sign->mutex);
             }
-            usleep(20000 * 1);
+            usleep(20000 * TIME_MULTIPLIER);
         }
     }
 
