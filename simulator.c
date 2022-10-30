@@ -62,7 +62,6 @@ int main()
     {
         perror("shm_unlink(SIM_END_SEM_NAME) failed");
     }
-    
 
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, O_CREAT, 0644, 0);
@@ -88,7 +87,6 @@ int main()
     htab_init(&car_hashtable, (LEVELS * NUM_SPOTS_LVL));
 
     printf("Waiting for Manager to connect to shm.\n");
-    // sem_wait(shm_established_sem);
     printf("Manager connected to shm.\n");
 
     init_entrance_data(&shm);
@@ -99,7 +97,6 @@ int main()
 
     pthread_t entrance_threads[ENTRANCES];
     pthread_t entrance_queue_threads[ENTRANCES];
-    // pthread_t level_threads[LEVELS];
     pthread_t sensor_eachLevel[LEVELS];
 
     queue_t *entrance_queues[ENTRANCES];
@@ -124,7 +121,6 @@ int main()
         entrance_data_shms[i].shm = &shm;
         entrance_data_shms[i].car_table = &car_hashtable;
 
-        // boom_gate_t *boom_gate = &entrance->boom_gate;
         pthread_create(&entrance_threads[i], NULL, handle_entrance_boomgate, (void *)&entrance_data_shms[i]);
     }
 
@@ -139,14 +135,6 @@ int main()
         pthread_create(&exit_threads[i], NULL, handle_exit_boomgate, (void *)exits[i]);
     }
 
-    // level_t *level;
-    // for (int i = 0; i < LEVELS; i++)
-    // {
-    //     int *data = malloc(sizeof(int));
-    //     *data = i;
-    //     pthread_create(&level_threads[i], NULL, test_thread, (void *)data);
-    // }
-
     printf("=================.\n");
     printf("Start Monitor Thread.\n");
     pthread_create(&monitor_sim_thread, NULL, wait_manager_close, (void *)manager_ended_sem);
@@ -155,10 +143,8 @@ int main()
     printf("Simulation ready to start\n");
     printf("Waiting for manager ready\n");
 
-    // char temp_mode = TEMP_MODE;
     char temp_mode;
     printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise");
-    // scanf(" %c", &temp_mode);
     while (temp_mode == '\0')
     {
         switch (temp_mode)
@@ -225,13 +211,6 @@ int main()
     printf("=================.\n");
     printf("Joined Car Thread.\n");
 
-    // sem_post(simulation_ended_sem);
-
-    // pthread_join(monitor_sim_thread, NULL);
-    // printf("=================.\n");
-    // printf("Manager ended.\n");
-
-    // Might need this?
     clean_shared_memory_data(&shm);
     printf("clean_shared_memory_data done.\n");
     destroy_shared_object(&shm);

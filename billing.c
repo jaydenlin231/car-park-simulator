@@ -36,7 +36,6 @@ void calc_bill(htab_t *h, char *s, double *total)
         // Write to billing.txt file
         FILE *fp;
         fp = fopen("billing.txt", "a");
-        // if (!fprintf(fp, "%s $%.2lf\n", item->key, bill))
         *total += bill;
         if (!fprintf(fp, "%s $%.2lf\n", item->key, bill))
         {

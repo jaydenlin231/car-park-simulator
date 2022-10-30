@@ -11,6 +11,7 @@ void init_capacity(capacity_t *capacity)
     capacity->max_cap_per_lvl = NUM_SPOTS_LVL;
 }
 
+// Get a car park number from lowest numbered level with a free capacity
 int get_empty_spot(capacity_t *capacity)
 {
     if (!capacity->full)

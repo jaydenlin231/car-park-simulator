@@ -103,7 +103,6 @@ void init_entrance_data(shared_memory_t *shm)
         entrance->boom_gate.status = BG_CLOSED;
         pthread_cond_broadcast(&entrance->boom_gate.cond);
         pthread_mutex_unlock(&entrance->boom_gate.mutex);
-        // TODO: init Info sign here
         printf("Entrance %ld Boom Gate %p status %c\n", i, &entrance->boom_gate, entrance->boom_gate.status);
     }
 }
@@ -234,29 +233,23 @@ void clean_shared_memory_data(shared_memory_t *shm)
     return;
 }
 
-// Refer to following.
-// https://stackoverflow.com/questions/40167559/in-c-how-would-i-choose-whether-to-return-a-struct-or-a-pointer-to-a-struct
 void get_entrance(shared_memory_t *shm, int i, entrance_t **entrance)
 {
-    // TODO: error handling and return status code/bool?
     *entrance = &(shm->data->entrances[i]);
     return;
 }
 void get_exit(shared_memory_t *shm, int i, exit_t **exit)
 {
-    // TODO: error handling and return status code/bool?
     *exit = &(shm->data->exits[i]);
     return;
 }
 void get_level(shared_memory_t *shm, int i, level_t **level)
 {
-    // TODO: error handling and return status code/bool?
     *level = &(shm->data->levels[i]);
     return;
 }
 void get_lpr(shared_memory_t *shm, int i, LPR_t **lpr)
 {
-    // TODO: error handling and return status code/bool?
     *lpr = &(shm->data->levels[i].lpr);
     return;
 }

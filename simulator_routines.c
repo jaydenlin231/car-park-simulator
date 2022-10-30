@@ -44,13 +44,8 @@ void *handle_entrance_queue(void *data)
             pthread_cond_wait(&entrance_LPR->cond, &entrance_LPR->mutex);
         }
         pthread_mutex_unlock(&entrance_LPR->mutex);
-        
 
-        if (pthread_mutex_lock(queue_mutex) != 0)
-        {
-            exit(1);
-        };
-
+        pthread_mutex_lock(queue_mutex);
         while (is_empty(entrance_queue))
         {
             pthread_cond_wait(cond, queue_mutex);
@@ -70,47 +65,27 @@ void *handle_entrance_queue(void *data)
         }
         pthread_cond_broadcast(&entrance_LPR->cond);
         pthread_mutex_unlock(&entrance_LPR->mutex);
-        // printf("\t\tEntrance LPR set as: %s\n", entrance_LPR->plate);
     }
 }
 
 void *handle_exit_boomgate(void *data)
 {
     exit_t *current_exit = (exit_t *)data;
-    // exit_t *current_exit = exit_data->exit;
     LPR_t *exit_LPR = &current_exit->lpr;
     boom_gate_t *boom_gate = &current_exit->boom_gate;
-    // pthread_mutex_t *LPR_mutex = &exit_LPR->mutex;
-    // pthread_cond_t *LPR_cond = &exit_LPR->cond;
     while (true)
     {
-        // printf("\tBoom Gate %p Monitor Loop ran %d times.\n", boom_gate, ++test);
-
-        if (pthread_mutex_lock(&boom_gate->mutex) != 0)
-        {
-            exit(1);
-        };
+        pthread_mutex_lock(&boom_gate->mutex);
         while (!(boom_gate->status == BG_RAISING || boom_gate->status == BG_LOWERING))
         {
-            // printf("\tBoom Gate %p Cond Wait BG_RAISING or BG_LOWERING. Current Status: %c.\n", boom_gate, boom_gate->status);
-            if (pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex) != 0)
-            {
-                exit(1);
-            };
+            pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
         }
-        if (pthread_mutex_unlock(&boom_gate->mutex) != 0)
-        {
-            exit(1);
-        };
-        // printf("Boom Gate %p Received Instruction Status: %c.\n", boom_gate, boom_gate->status);
+        pthread_mutex_unlock(&boom_gate->mutex);
         if (boom_gate->status == BG_RAISING)
         {
-            // printf("Raising Boom Gate %p...\n", boom_gate);
-            // printf("Opening: 10 ms\n");
             msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
-            // printf("Boom Gate %p Opened\n", boom_gate);
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
         }
@@ -133,9 +108,9 @@ void *car_logic(void *data)
     LPR_t *level_lpr = level_lpr_data->level_lpr;
     LPR_t *exit_lpr = level_lpr_data->exit_lpr;
     htab_t *hashtable = level_lpr_data->car_table;
-    
+
     // Takes 10ms to go to its parking spot
-    msleep(10 * TIME_MULTIPLIER); 
+    msleep(10 * TIME_MULTIPLIER);
 
     // Wait for LPR to be cleared, wait for previous car to finish processing
     pthread_mutex_lock(&level_lpr->mutex);
@@ -144,7 +119,7 @@ void *car_logic(void *data)
         pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
     }
     pthread_mutex_unlock(&level_lpr->mutex);
- 
+
     // Trigger the level LPR for the first time
     pthread_mutex_lock(&level_lpr->mutex);
     for (int i = 0; i < 6; i++)
@@ -156,7 +131,7 @@ void *car_logic(void *data)
 
     // Wait 100-10000ms before departing the level
     int rand_park_time = (rand() % (10000 - 100 + 1)) + 100;
-    msleep(rand_park_time * TIME_MULTIPLIER); 
+    msleep(rand_park_time * TIME_MULTIPLIER);
 
     // Wait for LPR to be cleared, wait for previous car to finish processing
     pthread_mutex_lock(&level_lpr->mutex);
@@ -216,8 +191,8 @@ void *handle_entrance_boomgate(void *data)
             pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
         }
         pthread_mutex_unlock(&boom_gate->mutex);
-        
-        // IF "EVACUATE" is displayed, let fire alarm open all boom gates, 
+
+        // IF "EVACUATE" is displayed, let fire alarm open all boom gates,
         // ignoring manager instructions during fire
         if (!(sign->display > '0' && sign->display <= ('0' + LEVELS) && sign->display != '\0'))
         {
@@ -228,7 +203,7 @@ void *handle_entrance_boomgate(void *data)
             continue;
         }
         if (boom_gate->status == BG_RAISING)
-        {   
+        {
             // Boom gates take 10ms to fully open
             msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
@@ -248,9 +223,9 @@ void *handle_entrance_boomgate(void *data)
             // zero index level
             int level = (sign->display - '0') - 1;
             car_data->directed_lvl = level;
-            
+
             // 10% car goes to random level
-            if (((rand() % 100) + 1) < 10) 
+            if (((rand() % 100) + 1) < 10)
             {
                 car_data->actual_lvl = rand() % (LEVELS);
             }
@@ -445,7 +420,7 @@ void *sim_fire_sensors(void *data)
                 char *normal_temp;
                 normal_temp = toArray(normal);
                 oldtemp = normal_temp;
-               
+
                 for (int i = 0; i < 1; i++)
                 {
                     sensor_datas->level->sensor[i] = 2 + '0';
@@ -457,7 +432,7 @@ void *sim_fire_sensors(void *data)
 
             switch (sensor_datas->type)
             {
-            
+
             // Normal Mode
             case 'N':
 
@@ -475,7 +450,7 @@ void *sim_fire_sensors(void *data)
                         break;
                     }
                     else
-                    // 99.99% chance of normal 
+                    // 99.99% chance of normal
                     {
                         // 2-3999
                         if (rand_num < 4000)
