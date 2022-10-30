@@ -160,7 +160,7 @@ void *car_logic(void *data)
 
     // printf("Attemp to change level LPR\n");
     pthread_mutex_lock(&level_lpr->mutex);
-    while (level_lpr->plate[0] != NULL)
+    while (level_lpr->plate[0] != '\0')
     {
         // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
         pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
@@ -192,7 +192,7 @@ void *car_logic(void *data)
     // msleep(8000); // Park for 10-10000ms
     // printf("Parking for %d ms\n", rand_park_time);
     pthread_mutex_lock(&level_lpr->mutex);
-    while (level_lpr->plate[0] != NULL)
+    while (level_lpr->plate[0] != '\0')
     {
         // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
         pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
@@ -524,7 +524,7 @@ void *sim_fire_sensors(void *data)
                 // sensor_datas->level->sensor[0] = 2 + '0';
                 // sensor_datas->level->sensor[1] = 5 + '0';
             }
-            int rand_num = (rand() % 1000) + 1;
+            int rand_num = (rand() % 10000) + 1;
 
             switch (sensor_datas->type)
             {
@@ -535,6 +535,7 @@ void *sim_fire_sensors(void *data)
                 if (!temp_high)
                 {
                     if (rand_num <= 1)
+                    //
                     {
                         // 0-10
                         temp_high = true;
@@ -544,7 +545,7 @@ void *sim_fire_sensors(void *data)
                     // 11-100
                     {
                         // 11-40
-                        if (rand_num < 400)
+                        if (rand_num < 4000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 5 + '0';
@@ -552,21 +553,21 @@ void *sim_fire_sensors(void *data)
                         }
                         // else
                         // 41-60
-                        else if (rand_num < 600)
+                        else if (rand_num < 6000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 2 + '0';
                             break;
                         }
                         // 60-
-                        else if (rand_num < 800)
+                        else if (rand_num < 8000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 4 + '0';
                             break;
                         }
                         // else
-                        else if (rand_num <= 1000)
+                        else if (rand_num <= 10000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 1 + '0';
@@ -586,7 +587,7 @@ void *sim_fire_sensors(void *data)
                     }
                     else
                     {
-                        if (rand_num < 500)
+                        if (rand_num < 5000)
                         {
                             sensor_datas->level->sensor[0] = 6 + '0';
                             sensor_datas->level->sensor[1] = 2 + '0';
@@ -602,7 +603,7 @@ void *sim_fire_sensors(void *data)
                 }
                 break;
             case 'R':
-                if (rand_num >= 600)
+                if (rand_num >= 6000)
                 {
                     int c = (atoi(oldtemp)) + 4;
                     char *raise_temp;
