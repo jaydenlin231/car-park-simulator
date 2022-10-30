@@ -73,7 +73,7 @@ int main()
     sem_t *simulation_ended_sem = sem_open(SIM_END_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, O_CREAT, 0644, 0);
     manager_ended_sem = sem_open(MAN_END_SEM_NAME, O_CREAT, 0644, 0);
-    sem_t *alarm_ready_sem = sem_open(ALARM_READY_SEM_NAME, O_CREAT, 0644, 0);
+    // sem_t *alarm_ready_sem = sem_open(ALARM_READY_SEM_NAME, O_CREAT, 0644, 0);
 
     printf("Attempt to create shared memory.\n");
 
@@ -105,7 +105,7 @@ int main()
     pthread_t entrance_threads[ENTRANCES];
     pthread_t entrance_queue_threads[ENTRANCES];
     // pthread_t level_threads[LEVELS];
-    pthread_t sensor_eachLevel[LEVELS];
+    // pthread_t sensor_eachLevel[LEVELS];
 
     queue_t *entrance_queues[ENTRANCES];
     entrance_data_t entrance_datas[ENTRANCES];
@@ -162,8 +162,8 @@ int main()
 
     sem_wait(manager_ready_sem);
 
-    char temp_mode = TEMP_MODE;
-    printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise\n-> ");
+    // char temp_mode = TEMP_MODE;
+    // printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise\n-> ");
     // // scanf(" %c", &temp_mode);
     // while (temp_mode == '\0')
     // {
@@ -184,25 +184,26 @@ int main()
     //     printf("\n -> ");
     //     scanf(" %c", &temp_mode);
     // }
-    pthread_t thread_fire[LEVELS];
-    sensor_data_t level_sensor_datas[LEVELS];
-    level_t *levels;
-    entrance_t *entrances;
-    exit_t *exit;
-    for (int i = 0; i < LEVELS; i++)
-    {
-        get_level(&shm, i, &levels);
-        get_entrance(&shm, i, &entrances);
-        get_exit(&shm, i, &exit);
-        level_sensor_datas[i].level = levels;
-        level_sensor_datas[i].entrance = entrances;
-        level_sensor_datas[i].exit = exit;
-        level_sensor_datas[i].type = temp_mode;
-        pthread_mutex_init(&level_sensor_datas[i].m, NULL);
-        pthread_cond_init(&level_sensor_datas[i].c, NULL);
-        sem_init(&level_sensor_datas[i].sim_to_man, SEM_SHARED, 1);
-        pthread_create(&thread_fire[i], NULL, sim_fire_sensors, (void *)&level_sensor_datas[i]);
-    }
+
+    // pthread_t thread_fire[LEVELS];
+    // sensor_data_t level_sensor_datas[LEVELS];
+    // level_t *levels;
+    // entrance_t *entrances;
+    // exit_t *exit;
+    // for (int i = 0; i < LEVELS; i++)
+    // {
+    //     get_level(&shm, i, &levels);
+    //     get_entrance(&shm, i, &entrances);
+    //     get_exit(&shm, i, &exit);
+    //     level_sensor_datas[i].level = levels;
+    //     level_sensor_datas[i].entrance = entrances;
+    //     level_sensor_datas[i].exit = exit;
+    //     level_sensor_datas[i].type = temp_mode;
+    //     pthread_mutex_init(&level_sensor_datas[i].m, NULL);
+    //     pthread_cond_init(&level_sensor_datas[i].c, NULL);
+    //     sem_init(&level_sensor_datas[i].sim_to_man, SEM_SHARED, 1);
+    //     pthread_create(&thread_fire[i], NULL, sim_fire_sensors, (void *)&level_sensor_datas[i]);
+    // }
 
     printf("=================.\n");
     printf("Start Car Thread.\n");

@@ -188,8 +188,8 @@ void *car_logic(void *data)
     // printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
 
     int rand_park_time = (rand() % (10000 - 10 + 1)) + 10;
-    msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
-    // msleep(8000); // Park for 10-10000ms
+    // msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
+    msleep(100); // Park for 10-10000ms
     // printf("Parking for %d ms\n", rand_park_time);
     pthread_mutex_lock(&level_lpr->mutex);
     while (level_lpr->plate[0] != NULL)
@@ -464,171 +464,171 @@ void *wait_manager_close(void *data)
     return NULL;
 }
 
-char *toArray(int number)
-{
-    int n = log10(number) + 1;
-    int i;
-    char *numberArray = calloc(n, sizeof(char));
-    for (i = n - 1; i >= 0; --i, number /= 10)
-    {
-        numberArray[i] = (number % 10) + '0';
-    }
-    return numberArray;
-}
+// char *toArray(int number)
+// {
+//     int n = log10(number) + 1;
+//     int i;
+//     char *numberArray = calloc(n, sizeof(char));
+//     for (i = n - 1; i >= 0; --i, number /= 10)
+//     {
+//         numberArray[i] = (number % 10) + '0';
+//     }
+//     return numberArray;
+// }
 
-void *sim_fire_sensors(void *data)
-{
-    sensor_data_t *sensor_datas = (sensor_data_t *)data;
-    pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
-    int normal;
-    char *normal_temp;
-    // int a ;
-    int fixed;
-    char *fixed_temp;
-    int high_temp_count;
-    bool temp_high;
-    srand(time(NULL));
+// void *sim_fire_sensors(void *data)
+// {
+//     sensor_data_t *sensor_datas = (sensor_data_t *)data;
+//     pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
+//     int normal;
+//     char *normal_temp;
+//     // int a ;
+//     int fixed;
+//     char *fixed_temp;
+//     int high_temp_count;
+//     bool temp_high;
+//     srand(time(NULL));
 
-    while (1)
-    {
-        for (int i = 0; i < LEVELS; i++)
-        {
+//     while (1)
+//     {
+//         for (int i = 0; i < LEVELS; i++)
+//         {
 
-            char *oldtemp = sensor_datas->level->sensor;
-            if (atoi(oldtemp) == 0)
-            {
-                normal = 25;
-                char *normal_temp;
-                normal_temp = toArray(normal);
-                oldtemp = normal_temp;
-                // for(int i = 0 ; i < 2; i++)
-                // {
-                //     sensor_datas->level->sensor[i] = normal_temp[i];
-                //     // printf("%s ", sensor_datas->level->sensor[i]);
-                // }
-                for (int i = 0; i < 1; i++)
-                {
-                    // sensor_datas->level->sensor[i] = fixed_temp[i];
-                    sensor_datas->level->sensor[i] = 2 + '0';
-                    sensor_datas->level->sensor[i + 1] = 5 + '0';
-                    // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
-                }
-                // sensor_datas->level->sensor[0] = 2 + '0';
-                // sensor_datas->level->sensor[1] = 5 + '0';
-            }
-            int rand_num = (rand() % 100) + 1;
+//             char *oldtemp = sensor_datas->level->sensor;
+//             if (atoi(oldtemp) == 0)
+//             {
+//                 normal = 25;
+//                 char *normal_temp;
+//                 normal_temp = toArray(normal);
+//                 oldtemp = normal_temp;
+//                 // for(int i = 0 ; i < 2; i++)
+//                 // {
+//                 //     sensor_datas->level->sensor[i] = normal_temp[i];
+//                 //     // printf("%s ", sensor_datas->level->sensor[i]);
+//                 // }
+//                 for (int i = 0; i < 1; i++)
+//                 {
+//                     // sensor_datas->level->sensor[i] = fixed_temp[i];
+//                     sensor_datas->level->sensor[i] = 2 + '0';
+//                     sensor_datas->level->sensor[i + 1] = 5 + '0';
+//                     // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
+//                 }
+//                 // sensor_datas->level->sensor[0] = 2 + '0';
+//                 // sensor_datas->level->sensor[1] = 5 + '0';
+//             }
+//             int rand_num = (rand() % 100) + 1;
 
-            switch (sensor_datas->type)
-            {
-            case 'N':
+//             switch (sensor_datas->type)
+//             {
+//             case 'N':
 
-                sensor_datas->level->sensor[0] = 2 + '0';
-                sensor_datas->level->sensor[1] = 3 + '0';
-                if (!temp_high)
-                {
-                    if ((rand() % 100 + 1) <= 1)
-                    {
-                        // 0-10
-                        temp_high = true;
-                        break;
-                    }
-                    else
-                    // 11-100
-                    {
-                        // 11-40
-                        if ((rand() % 100 + 1) < 40)
-                        {
-                            sensor_datas->level->sensor[0] = 2 + '0';
-                            sensor_datas->level->sensor[1] = 5 + '0';
-                            break;
-                        }
-                        // else
-                        // 41-60
-                        else if ((rand() % 100 + 1) < 60)
-                        {
-                            sensor_datas->level->sensor[0] = 2 + '0';
-                            sensor_datas->level->sensor[1] = 2 + '0';
-                            break;
-                        }
-                        // 60-
-                        else if ((rand() % 100 + 1) < 80)
-                        {
-                            sensor_datas->level->sensor[0] = 2 + '0';
-                            sensor_datas->level->sensor[1] = 4 + '0';
-                            break;
-                        }
-                        // else
-                        else if ((rand() % 100 + 1) <= 100)
-                        {
-                            sensor_datas->level->sensor[0] = 2 + '0';
-                            sensor_datas->level->sensor[1] = 1 + '0';
-                            break;
-                        }
-                    }
-                }
-                if (temp_high)
-                {
-                    high_temp_count++;
-                    sensor_datas->level->sensor[0] = 6 + '0';
-                    sensor_datas->level->sensor[1] = 1 + '0';
-                    if (high_temp_count > 10000)
-                    {
-                        temp_high = false;
-                        break;
-                    }
-                    else
-                    {
-                        if ((rand() % 100 + 1) < 50)
-                        {
-                            sensor_datas->level->sensor[0] = 6 + '0';
-                            sensor_datas->level->sensor[1] = 2 + '0';
-                            break;
-                        }
-                        else
-                        {
-                            sensor_datas->level->sensor[0] = 6 + '0';
-                            sensor_datas->level->sensor[1] = 0 + '0';
-                            break;
-                        }
-                    }
-                }
-                break;
-            case 'R':
-                if (rand_num >= 60)
-                {
-                    int c = (atoi(oldtemp)) + 4;
-                    char *raise_temp;
-                    raise_temp = toArray(c);
-                    for (int i = 0; i < 1; i++)
-                    {
-                        sensor_datas->level->sensor[i] = raise_temp[i];
-                        sensor_datas->level->sensor[i + 1] = raise_temp[i + 1];
-                        // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
+//                 sensor_datas->level->sensor[0] = 2 + '0';
+//                 sensor_datas->level->sensor[1] = 3 + '0';
+//                 if (!temp_high)
+//                 {
+//                     if ((rand() % 100 + 1) <= 1)
+//                     {
+//                         // 0-10
+//                         temp_high = true;
+//                         break;
+//                     }
+//                     else
+//                     // 11-100
+//                     {
+//                         // 11-40
+//                         if ((rand() % 100 + 1) < 40)
+//                         {
+//                             sensor_datas->level->sensor[0] = 2 + '0';
+//                             sensor_datas->level->sensor[1] = 5 + '0';
+//                             break;
+//                         }
+//                         // else
+//                         // 41-60
+//                         else if ((rand() % 100 + 1) < 60)
+//                         {
+//                             sensor_datas->level->sensor[0] = 2 + '0';
+//                             sensor_datas->level->sensor[1] = 2 + '0';
+//                             break;
+//                         }
+//                         // 60-
+//                         else if ((rand() % 100 + 1) < 80)
+//                         {
+//                             sensor_datas->level->sensor[0] = 2 + '0';
+//                             sensor_datas->level->sensor[1] = 4 + '0';
+//                             break;
+//                         }
+//                         // else
+//                         else if ((rand() % 100 + 1) <= 100)
+//                         {
+//                             sensor_datas->level->sensor[0] = 2 + '0';
+//                             sensor_datas->level->sensor[1] = 1 + '0';
+//                             break;
+//                         }
+//                     }
+//                 }
+//                 if (temp_high)
+//                 {
+//                     high_temp_count++;
+//                     sensor_datas->level->sensor[0] = 6 + '0';
+//                     sensor_datas->level->sensor[1] = 1 + '0';
+//                     if (high_temp_count > 10000)
+//                     {
+//                         temp_high = false;
+//                         break;
+//                     }
+//                     else
+//                     {
+//                         if ((rand() % 100 + 1) < 50)
+//                         {
+//                             sensor_datas->level->sensor[0] = 6 + '0';
+//                             sensor_datas->level->sensor[1] = 2 + '0';
+//                             break;
+//                         }
+//                         else
+//                         {
+//                             sensor_datas->level->sensor[0] = 6 + '0';
+//                             sensor_datas->level->sensor[1] = 0 + '0';
+//                             break;
+//                         }
+//                     }
+//                 }
+//                 break;
+//             case 'R':
+//                 if (rand_num >= 60)
+//                 {
+//                     int c = (atoi(oldtemp)) + 4;
+//                     char *raise_temp;
+//                     raise_temp = toArray(c);
+//                     for (int i = 0; i < 1; i++)
+//                     {
+//                         sensor_datas->level->sensor[i] = raise_temp[i];
+//                         sensor_datas->level->sensor[i + 1] = raise_temp[i + 1];
+//                         // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
 
-                        // printf("%d ", sensor_datas->level->sensor[i]);
-                    }
-                    // level->temp_sensor = oldtemp + 4;
-                }
-                break;
-            case 'F':
-                // fixed = 60;
-                // // char *fixed_temp;
-                // fixed_temp = toArray(fixed);
+//                         // printf("%d ", sensor_datas->level->sensor[i]);
+//                     }
+//                     // level->temp_sensor = oldtemp + 4;
+//                 }
+//                 break;
+//             case 'F':
+//                 // fixed = 60;
+//                 // // char *fixed_temp;
+//                 // fixed_temp = toArray(fixed);
 
-                // sensor_datas->level->sensor[0] = 6 + '0';
-                // sensor_datas->level->sensor[1] = 0 + '0';
+//                 // sensor_datas->level->sensor[0] = 6 + '0';
+//                 // sensor_datas->level->sensor[1] = 0 + '0';
 
-                for (int i = 0; i < 1; i++)
-                {
-                    // sensor_datas->level->sensor[i] = fixed_temp[i];
-                    sensor_datas->level->sensor[i] = 6 + '0';
-                    sensor_datas->level->sensor[i + 1] = 0 + '0';
-                    // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
-                }
-                break;
-            }
-        }
-        msleep(500);
-    }
-    return NULL;
-}
+//                 for (int i = 0; i < 1; i++)
+//                 {
+//                     // sensor_datas->level->sensor[i] = fixed_temp[i];
+//                     sensor_datas->level->sensor[i] = 6 + '0';
+//                     sensor_datas->level->sensor[i + 1] = 0 + '0';
+//                     // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
+//                 }
+//                 break;
+//             }
+//         }
+//         msleep(500);
+//     }
+//     return NULL;
+// }

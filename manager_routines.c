@@ -177,6 +177,7 @@ void *monitor_exit(void *data)
             pthread_mutex_lock(&hashtable->mutex);
             item_t *car = htab_find(hashtable, exit_LPR->plate);
             calc_bill(hashtable, exit_LPR->plate, revenue);
+            pthread_mutex_unlock(&hashtable->mutex);
             car->entry_time = 0;
             car->actual_lvl = 0;
             car->directed_lvl = 0;
