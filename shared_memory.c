@@ -13,7 +13,7 @@
 #include "carpark_details.h"
 #include "shared_memory.h"
 
-#define SHM_NAME "/PARKING"
+#define SHM_NAME "PARKING"
 #define SHM_SZ sizeof(data_t)
 
 bool create_shared_object(shared_memory_t *shm)
@@ -91,30 +91,6 @@ bool get_shared_object(shared_memory_t *shm)
     return true;
 }
 
-void showPshared(pthread_mutexattr_t *mta)
-{
-    //   int           rc;
-    int pshared;
-
-    printf("Check pshared attribute\n");
-    pthread_mutexattr_getpshared(mta, &pshared);
-
-    printf("The pshared attributed is: ");
-    switch (pshared)
-    {
-    case PTHREAD_PROCESS_PRIVATE:
-        printf("PTHREAD_PROCESS_PRIVATE\n");
-        break;
-    case PTHREAD_PROCESS_SHARED:
-        printf("PTHREAD_PROCESS_SHARED\n");
-        break;
-    default:
-        printf("! pshared Error !\n");
-        exit(1);
-    }
-    return;
-}
-
 void init_entrance_data(shared_memory_t *shm)
 {
 
@@ -164,8 +140,6 @@ void init_shared_memory_data(shared_memory_t *shm)
         exit(1);
     }
 
-    showPshared(&mutexattr);
-
     entrance_t *entrance;
     for (size_t i = 0; i < ENTRANCES; i++)
     {
@@ -200,32 +174,16 @@ void init_shared_memory_data(shared_memory_t *shm)
             perror("entrance info sign pthread cond attr init");
             exit(1);
         }
-        printf("Entrance %ld: %p\n", i, entrance);
-        // TODO: init LRP data here
-        // TODO: init Booom gate here
-        // pthread_mutex_lock(&entrance->boom_gate.mutex);
-        // entrance->boom_gate.status = BG_CLOSED;
-        // pthread_cond_signal(&entrance->boom_gate.cond);
-        // pthread_mutex_unlock(&entrance->boom_gate.mutex);
-        // // TODO: init Info sign here
-        // printf("Entrance %d Boom Gate %p status %c\n",i, &entrance->boom_gate,entrance->boom_gate.status);
     }
 
     exit_t *exit;
     for (size_t i = 0; i < EXITS; i++)
     {
         get_exit(shm, i, &exit);
-        if (pthread_mutex_init(&exit->lpr.mutex, &mutexattr) != 0)
-        {
-            perror("exit lpr pthread mutex attr init");
-            printf("%d\n", pthread_mutex_init(&exit->lpr.mutex, &mutexattr));
-        }
+        pthread_mutex_init(&exit->lpr.mutex, &mutexattr);
         pthread_cond_init(&exit->lpr.cond, &condattr);
         pthread_mutex_init(&exit->boom_gate.mutex, &mutexattr);
         pthread_cond_init(&exit->boom_gate.cond, &condattr);
-        printf("Exit %ld: %p\n", i, exit);
-        // TODO: init LRP data here
-        // TODO: init Booom gate here
         exit->boom_gate.status = BG_CLOSED;
     }
 
@@ -235,13 +193,10 @@ void init_shared_memory_data(shared_memory_t *shm)
         get_level(shm, i, &level);
         pthread_mutex_init(&level->lpr.mutex, &mutexattr);
         pthread_cond_init(&level->lpr.cond, &condattr);
-        printf("Level %ld: %p\n", i, level);
-        // printf("!!!!!!!!!!Initialised LPR address %p\n", &level->lpr);
-        // TODO: init LRP data here
     }
 
-    // pthread_mutexattr_destroy(&mutexattr);
-    // pthread_condattr_destroy(&condattr);
+    pthread_mutexattr_destroy(&mutexattr);
+    pthread_condattr_destroy(&condattr);
     return;
 }
 

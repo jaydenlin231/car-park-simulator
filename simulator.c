@@ -20,7 +20,7 @@
 #include "utility.h"
 #include "simulator_routines.h"
 
-#define SHM_NAME "/PARKING"
+#define SHM_NAME "PARKING"
 #define SHM_SZ sizeof(data_t)
 
 #define SEM_SHARED 1
@@ -30,7 +30,6 @@
 #define SIM_END_SEM_NAME "/SIM_ENDED"
 #define MAN_READY_SEM_NAME "/MAN_READY"
 #define MAN_END_SEM_NAME "/MAN_ENDED"
-#define ALARM_READY_SEM_NAME "/ALARM_READY"
 
 #define TEMP_MODE 'F'
 
@@ -63,17 +62,13 @@ int main()
     {
         perror("shm_unlink(SIM_END_SEM_NAME) failed");
     }
-    if (sem_unlink(ALARM_READY_SEM_NAME) != 0)
-    {
-        perror("shm_unlink(ALARM_READY_SEM_NAME) failed");
-    }
+    
 
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *simulation_ended_sem = sem_open(SIM_END_SEM_NAME, O_CREAT, 0644, 0);
     sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, O_CREAT, 0644, 0);
     manager_ended_sem = sem_open(MAN_END_SEM_NAME, O_CREAT, 0644, 0);
-    sem_t *alarm_ready_sem = sem_open(ALARM_READY_SEM_NAME, O_CREAT, 0644, 0);
 
     printf("Attempt to create shared memory.\n");
 

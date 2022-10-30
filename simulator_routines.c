@@ -38,41 +38,25 @@ void *handle_entrance_queue(void *data)
 
     while (true)
     {
-        // printf("\n\tManage entrance loop ran\n");
-
-        if (pthread_mutex_lock(&entrance_LPR->mutex) != 0)
-        {
-            perror("pthread_mutex_lock(&LPR->mutex)");
-            exit(1);
-        };
+        pthread_mutex_lock(&entrance_LPR->mutex);
         while (entrance_LPR->plate[0] != '\0')
         {
-            // printf("\t\tCond Wait LPR NULL, currently: %s\n", entrance_LPR->plate);
             pthread_cond_wait(&entrance_LPR->cond, &entrance_LPR->mutex);
         }
-        if (pthread_mutex_unlock(&entrance_LPR->mutex) != 0)
-        {
-            perror("pthread_mutex_lock(&LPR->mutex)");
-            exit(1);
-        };
-
-        // printf("\t\tQueue:%p entrance_LPR_free\n", entrance_queue);
+        pthread_mutex_unlock(&entrance_LPR->mutex);
+        
 
         if (pthread_mutex_lock(queue_mutex) != 0)
         {
             exit(1);
         };
-        // printf("Is Empty: %d\n", entrance_data->queue_is_empty);
+
         while (is_empty(entrance_queue))
         {
-            // printf("\t\tQueue:%p COND WAIT queue not empty, current is_empty status:%d\n", entrance_queue, is_empty(entrance_queue));
             pthread_cond_wait(cond, queue_mutex);
         }
-        // pthread_mutex_unlock(queue_mutex);
 
-        // pthread_mutex_lock(queue_mutex);
         char *first_plate_in_queue = dequeue(entrance_queue);
-        // printf("Dequeue from Queue:%p - %s\n", entrance_queue, first_plate_in_queue);
         pthread_mutex_unlock(queue_mutex);
 
         // printf("Waiting for 2ms before triggering LPR from Queue:%p with Rego:%s\n", entrance_queue, first_plate_in_queue);
@@ -132,74 +116,36 @@ void *handle_exit_boomgate(void *data)
         }
         else if (boom_gate->status == BG_LOWERING)
         {
-            // printf("Lowering Boom Gate %p...\n", boom_gate);
-            // printf("Lowering: 10 ms\n");
             msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_CLOSED;
-            // printf("Boom Gate %p Closed\n", boom_gate);
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
         }
     }
-    printf("Boom Gate Quit before broadcast %p...\n", boom_gate);
     return NULL;
 }
 
 void *car_logic(void *data)
 {
-
     level_lpr_data_t *level_lpr_data = (level_lpr_data_t *)data;
     car_t *car = level_lpr_data->car;
     LPR_t *level_lpr = level_lpr_data->level_lpr;
     LPR_t *exit_lpr = level_lpr_data->exit_lpr;
     htab_t *hashtable = level_lpr_data->car_table;
-    msleep(10 * TIME_MULTIPLIER); // Takes 10ms to go to its parking spot
+    
+    // Takes 10ms to go to its parking spot
+    msleep(10 * TIME_MULTIPLIER); 
 
-    // printf("Car logic started\n");
-
-    // printf("Attemp to change level LPR\n");
+    // Wait for LPR to be cleared, wait for previous car to finish processing
     pthread_mutex_lock(&level_lpr->mutex);
     while (level_lpr->plate[0] != '\0')
     {
-        // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
         pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
     }
     pthread_mutex_unlock(&level_lpr->mutex);
-
-    pthread_mutex_lock(&level_lpr->mutex);
-    for (int i = 0; i < 6; i++)
-    {
-        level_lpr->plate[i] = car->plate[i];
-    }
-    pthread_cond_broadcast(&level_lpr->cond);
-    pthread_mutex_unlock(&level_lpr->mutex);
-    // Trigger level LPR here prob with mutex locks and conds
-    // pthread_mutex_lock
-    // Then the manager sees the level LPR has been triggerd
-
-    // Then increases capacity by 1 at that level and start billing
-
-    // printf("***********************************\n");
-    // printf("level lpr reads: %s\n", lpr->plate);
-    // printf("The car: %s is parked at: %d\n", car->plate, car->directed_lvl);
-    // printf("***********************************\n");
-
-    // printf("The car: %s triggered level: %d LPR\n", car->plate, car->directed_lvl);
-
-    int rand_park_time = (rand() % (10000 - 10 + 1)) + 10;
-    msleep(rand_park_time * TIME_MULTIPLIER); // Park for 10-10000ms
-    // msleep(8000); // Park for 10-10000ms
-    // printf("Parking for %d ms\n", rand_park_time);
-    pthread_mutex_lock(&level_lpr->mutex);
-    while (level_lpr->plate[0] != '\0')
-    {
-        // printf("\t\tCond Wait LPR not NULL, currently: %s\n", level_lpr->plate);
-        pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
-    }
-    pthread_mutex_unlock(&level_lpr->mutex);
-
-    // // Trigger level LPR again when exiting
+ 
+    // Trigger the level LPR for the first time
     pthread_mutex_lock(&level_lpr->mutex);
     for (int i = 0; i < 6; i++)
     {
@@ -208,9 +154,31 @@ void *car_logic(void *data)
     pthread_cond_broadcast(&level_lpr->cond);
     pthread_mutex_unlock(&level_lpr->mutex);
 
-    // Takes 10ms from second LPR trigger to Exit LPR
+    // Wait 100-10000ms before departing the level
+    int rand_park_time = (rand() % (10000 - 100 + 1)) + 100;
+    msleep(rand_park_time * TIME_MULTIPLIER); 
+
+    // Wait for LPR to be cleared, wait for previous car to finish processing
+    pthread_mutex_lock(&level_lpr->mutex);
+    while (level_lpr->plate[0] != '\0')
+    {
+        pthread_cond_wait(&level_lpr->cond, &level_lpr->mutex);
+    }
+    pthread_mutex_unlock(&level_lpr->mutex);
+
+    // Trigger level LPR for the second time
+    pthread_mutex_lock(&level_lpr->mutex);
+    for (int i = 0; i < 6; i++)
+    {
+        level_lpr->plate[i] = car->plate[i];
+    }
+    pthread_cond_broadcast(&level_lpr->cond);
+    pthread_mutex_unlock(&level_lpr->mutex);
+
+    // Takes 10ms from second LPR trigger to exit LPR
     msleep(10 * TIME_MULTIPLIER);
 
+    // Trigger exit LPR when exiting
     pthread_mutex_lock(&exit_lpr->mutex);
     for (int i = 0; i < 6; i++)
     {
@@ -219,10 +187,13 @@ void *car_logic(void *data)
     pthread_cond_broadcast(&exit_lpr->cond);
     pthread_mutex_unlock(&exit_lpr->mutex);
 
+    // Delete car details from hastable for re-entry
     pthread_mutex_lock(&hashtable->mutex);
     htab_delete(hashtable, car->plate);
     pthread_mutex_unlock(&hashtable->mutex);
+    // Free resources
     free(car);
+    // Finish car simulation
     pthread_exit(NULL);
 }
 
@@ -236,69 +207,50 @@ void *handle_entrance_boomgate(void *data)
     info_sign_t *sign = &entrance->info_sign;
     htab_t *hashtable = entrance_data_shm->car_table;
 
-    printf("Created Boom Gate %p Thread\n", boom_gate);
-
-    // pthread_mutex_lock(&initialisation_mutex);
-    // ready_threads++;
-    // pthread_cond_broadcast(&initialisation_cond);
-    // pthread_mutex_unlock(&initialisation_mutex);
-    // int num = 0;
-    int test = 0;
     while (true)
     {
-        // printf("\tBoom Gate %p Monitor Loop ran %d times.\n", boom_gate, ++test);
 
-        if (pthread_mutex_lock(&boom_gate->mutex) != 0)
-        {
-            exit(1);
-        };
+        pthread_mutex_lock(&boom_gate->mutex);
         while (!(boom_gate->status == BG_RAISING || boom_gate->status == BG_LOWERING))
         {
-            // printf("\tBoom Gate %p Cond Wait BG_RAISING or BG_LOWERING. Current Status: %c.\n", boom_gate, boom_gate->status);
-            if (pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex) != 0)
-            {
-                exit(1);
-            };
+            pthread_cond_wait(&boom_gate->cond, &boom_gate->mutex);
         }
-        if (pthread_mutex_unlock(&boom_gate->mutex) != 0)
-        {
-            exit(1);
-        };
-        // printf("Boom Gate %p Received Instruction Status: %c.\n", boom_gate, boom_gate->status);
+        pthread_mutex_unlock(&boom_gate->mutex);
+        
+        // IF "EVACUATE" is displayed, let fire alarm open all boom gates, 
+        // ignoring manager instructions during fire
         if (!(sign->display > '0' && sign->display <= ('0' + LEVELS) && sign->display != '\0'))
         {
-            printf("The sign displayed %c\n", sign->display);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
-            // printf("Boom Gate %p Opened\n", boom_gate);
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
             continue;
         }
         if (boom_gate->status == BG_RAISING)
-        {
-            // printf("Raising Boom Gate %p...\n", boom_gate);
-            // printf("Opening: 10 ms\n");
+        {   
+            // Boom gates take 10ms to fully open
             msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_OPENED;
-            // printf("Boom Gate %p Opened\n", boom_gate);
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
 
-            // Car logic stuff
+            // Car logic
             pthread_t car;
             level_lpr_data_t *level_lpr_data = malloc(sizeof(level_lpr_data_t));
             level_lpr_data->car_table = hashtable;
             car_t *car_data = malloc(sizeof(car_t));
             char *plate_copy = malloc(sizeof(char) * (strlen(lpr->plate) + 1));
             strcpy(plate_copy, lpr->plate);
-            // htab_add(hashtable, plate_copy);
             car_data->plate = plate_copy;
+
             // zero index level
             int level = (sign->display - '0') - 1;
             car_data->directed_lvl = level;
-            if (((rand() % 100) + 1) < 10) // 10% car goes to random level
+            
+            // 10% car goes to random level
+            if (((rand() % 100) + 1) < 10) 
             {
                 car_data->actual_lvl = rand() % (LEVELS);
             }
@@ -306,8 +258,9 @@ void *handle_entrance_boomgate(void *data)
             {
                 car_data->actual_lvl = car_data->directed_lvl;
             }
-            // car_data->actual_lvl = car_data->directed_lvl;
             level_lpr_data->car = car_data;
+
+            // Decide random exit
             int random_exit_number = rand() % EXITS;
             exit_t *random_exit;
             LPR_t *directed_level_LPR;
@@ -315,22 +268,18 @@ void *handle_entrance_boomgate(void *data)
             get_exit(shm, random_exit_number, &random_exit);
             level_lpr_data->level_lpr = directed_level_LPR;
             level_lpr_data->exit_lpr = &random_exit->lpr;
-            // printf("Car wants to go to zero index: %d\n", level);
             pthread_create(&car, NULL, car_logic, (void *)level_lpr_data);
         }
         else if (boom_gate->status == BG_LOWERING)
         {
-            // printf("Lowering Boom Gate %p...\n", boom_gate);
-            // printf("Lowering: 10 ms\n");
+            // Boom gates take 10ms to fully close.
             msleep(10 * TIME_MULTIPLIER);
             pthread_mutex_lock(&boom_gate->mutex);
             boom_gate->status = BG_CLOSED;
-            // printf("Boom Gate %p Closed\n", boom_gate);
             pthread_cond_signal(&boom_gate->cond);
             pthread_mutex_unlock(&boom_gate->mutex);
         }
     }
-    printf("Boom Gate Quit before broadcast %p...\n", boom_gate);
     return NULL;
 }
 
@@ -338,12 +287,11 @@ void *generate_cars(void *arg)
 {
     entrance_data_t *entrance_datas = (entrance_data_t *)arg;
     htab_t *hashtable = entrance_datas->car_table;
-    // queue_t *entrance_queue = entrance_data[]->entrance_queue;
 
     pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
     int bool_for_checking = 0;
     char file_location[] = "plates.txt";
-    // printf("%s\n", file_location );
+
     FILE *f = fopen(file_location, "r");
     if (!f)
     {
@@ -355,7 +303,7 @@ void *generate_cars(void *arg)
 
     // create two d array  //int 100 is 100 plates in .txt
     char **plates = calloc(100, sizeof(char *));
-    // int plates_len;
+
     // each elements in 2d array allocate memory into it
     for (size_t i = 0; i < 100; i++)
     {
@@ -368,14 +316,11 @@ void *generate_cars(void *arg)
 
     while ((line < 100) && (fscanf(f, "%s", buffer) != EOF))
     {
-        // printf("Read plate %s\n", buffer);
-
         strcpy(plates[line], buffer);
         line++;
     }
     total_plates = line;
-    // printf("%d\n", total_plates);
-    // plates_len = line;
+
     if (bool_for_checking != 0)
     {
         printf("Couldn't import valid plates!\n");
@@ -385,18 +330,20 @@ void *generate_cars(void *arg)
 
     while (true)
     {
+        // Every 1-100ms, a new car will be generated
         pthread_mutex_lock(&lock_rand_num);
         int rand_car_gen_time = (rand() % 100) + 1;
         pthread_mutex_unlock(&lock_rand_num);
-
         msleep(rand_car_gen_time * TIME_MULTIPLIER);
-        // msleep(100);
-        // char result;
+
+        // 50% random number plate, 50% valid number plate
         pthread_mutex_lock(&lock_rand_num);
         int halfChance = rand() % 2;
         pthread_mutex_unlock(&lock_rand_num);
 
         char six_d_plate[7];
+
+        // Valid number plate from list
         if (halfChance == 1)
         {
             pthread_mutex_lock(&lock_rand_num);
@@ -418,6 +365,7 @@ void *generate_cars(void *arg)
                 six_d_plate[i] = '\0';
             }
         }
+        // Random number plate
         else
         {
             pthread_mutex_lock(&lock_rand_num);
@@ -432,10 +380,11 @@ void *generate_cars(void *arg)
             }
             pthread_mutex_unlock(&lock_rand_num);
         }
+
+        // Select random entrance
         int rand_entrance = rand() % ENTRANCES;
 
         char *plate_string = malloc(sizeof(char) * 7);
-        // plate_string[6] = '\0';
         strncpy(plate_string, six_d_plate, 6);
         if (htab_find(hashtable, plate_string) == NULL)
         {
@@ -448,18 +397,6 @@ void *generate_cars(void *arg)
             htab_add(hashtable, plate_string);
             pthread_mutex_unlock(&hashtable->mutex);
         }
-        else
-        {
-            // printf("%s has already been generated\n", plate_string);
-        }
-
-        // printf("%s queued to queue #%d at %Lf\n", six_d_plate, rand_entrance, get_time());
-        // for (int i = 0; i < ENTRANCES; i++)
-        // {
-        //     printf("Entrace %d: ", i);
-        //     print_queue(entrance_datas[i].entrance_queue);
-        // }
-        // printf("\n");
     }
 
     return (NULL);
@@ -490,7 +427,6 @@ void *sim_fire_sensors(void *data)
     pthread_mutex_t lock_rand_num = PTHREAD_MUTEX_INITIALIZER;
     int normal;
     char *normal_temp;
-    // int a ;
     int fixed;
     char *fixed_temp;
     int high_temp_count;
@@ -501,7 +437,7 @@ void *sim_fire_sensors(void *data)
     {
         for (int i = 0; i < LEVELS; i++)
         {
-
+            // Default temperature
             char *oldtemp = sensor_datas->level->sensor;
             if (atoi(oldtemp) == 0)
             {
@@ -509,64 +445,60 @@ void *sim_fire_sensors(void *data)
                 char *normal_temp;
                 normal_temp = toArray(normal);
                 oldtemp = normal_temp;
-                // for(int i = 0 ; i < 2; i++)
-                // {
-                //     sensor_datas->level->sensor[i] = normal_temp[i];
-                //     // printf("%s ", sensor_datas->level->sensor[i]);
-                // }
+               
                 for (int i = 0; i < 1; i++)
                 {
-                    // sensor_datas->level->sensor[i] = fixed_temp[i];
                     sensor_datas->level->sensor[i] = 2 + '0';
                     sensor_datas->level->sensor[i + 1] = 5 + '0';
-                    // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
                 }
-                // sensor_datas->level->sensor[0] = 2 + '0';
-                // sensor_datas->level->sensor[1] = 5 + '0';
             }
+            // Random num ranged between 1-10000
             int rand_num = (rand() % 10000) + 1;
 
             switch (sensor_datas->type)
             {
+            
+            // Normal Mode
             case 'N':
 
+                // Default temperature
                 sensor_datas->level->sensor[0] = 2 + '0';
                 sensor_datas->level->sensor[1] = 3 + '0';
+
+                // Normal temperature
                 if (!temp_high)
                 {
                     if (rand_num <= 1)
-                    //
+                    // 0.01% chance of fire
                     {
-                        // 0-10
                         temp_high = true;
                         break;
                     }
                     else
-                    // 11-100
+                    // 99.99% chance of normal 
                     {
-                        // 11-40
+                        // 2-3999
                         if (rand_num < 4000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 5 + '0';
                             break;
                         }
-                        // else
-                        // 41-60
+                        // 4000-5999
                         else if (rand_num < 6000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 2 + '0';
                             break;
                         }
-                        // 60-
+                        // 6000-7999
                         else if (rand_num < 8000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 4 + '0';
                             break;
                         }
-                        // else
+                        // 7999-1000
                         else if (rand_num <= 10000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
@@ -575,16 +507,20 @@ void *sim_fire_sensors(void *data)
                         }
                     }
                 }
+                // Fire
                 if (temp_high)
                 {
                     high_temp_count++;
                     sensor_datas->level->sensor[0] = 6 + '0';
                     sensor_datas->level->sensor[1] = 1 + '0';
+
+                    // Chance of fire recovery
                     if (high_temp_count > 10000)
                     {
                         temp_high = false;
                         break;
                     }
+                    // Continue fire
                     else
                     {
                         if (rand_num < 5000)
@@ -602,7 +538,9 @@ void *sim_fire_sensors(void *data)
                     }
                 }
                 break;
+            // Raising Mode
             case 'R':
+                // 60% chance of raising temperature
                 if (rand_num >= 6000)
                 {
                     int c = (atoi(oldtemp)) + 4;
@@ -612,31 +550,21 @@ void *sim_fire_sensors(void *data)
                     {
                         sensor_datas->level->sensor[i] = raise_temp[i];
                         sensor_datas->level->sensor[i + 1] = raise_temp[i + 1];
-                        // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
-
-                        // printf("%d ", sensor_datas->level->sensor[i]);
                     }
-                    // level->temp_sensor = oldtemp + 4;
                 }
                 break;
+            // Fixed Mode
             case 'F':
-                // fixed = 60;
-                // // char *fixed_temp;
-                // fixed_temp = toArray(fixed);
-
-                // sensor_datas->level->sensor[0] = 6 + '0';
-                // sensor_datas->level->sensor[1] = 0 + '0';
-
+                // Constant normal temperature
                 for (int i = 0; i < 1; i++)
                 {
-                    // sensor_datas->level->sensor[i] = fixed_temp[i];
                     sensor_datas->level->sensor[i] = 2 + '0';
                     sensor_datas->level->sensor[i + 1] = 0 + '0';
-                    // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
                 }
                 break;
             }
         }
+        // The fire alarm system will generate temperature readings every 2ms
         msleep(2 * TIME_MULTIPLIER);
     }
     return NULL;

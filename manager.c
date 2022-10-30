@@ -21,7 +21,7 @@
 #include "utility.h"
 #include "manager_routines.h"
 
-#define SHM_NAME "/PARKING"
+#define SHM_NAME "PARKING"
 #define SHM_SZ sizeof(data_t)
 
 #define SHM_EST_SEM_NAME "/SHM_ESTABLISHED"
@@ -29,14 +29,10 @@
 #define SIM_END_SEM_NAME "/SIM_ENDED"
 #define MAN_READY_SEM_NAME "/MAN_READY"
 #define MAN_END_SEM_NAME "/MAN_ENDED"
-#define ALARM_READY_SEM_NAME "/ALARM_READY"
 
 #define PLATE_FILE "plates.txt"
 #define MAX_LINE_LENGTH 7
 #define MAX_IMPORTED_PLATES 100
-
-static pthread_mutex_t initialisation_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t initialisation_cond = PTHREAD_COND_INITIALIZER;
 
 static htab_t hashtable;
 static capacity_t capacity;
@@ -45,6 +41,7 @@ static double total_revenue = 0.00;
 
 int main()
 {
+    // Randomise seed with current time
     srand(time(NULL));
 
     shared_memory_t shm;
@@ -52,10 +49,7 @@ int main()
     sem_t *shm_established_sem = sem_open(SHM_EST_SEM_NAME, 0);
     sem_t *simulation_ready_sem = sem_open(SIM_READY_SEM_NAME, 0);
     sem_t *manager_ready_sem = sem_open(MAN_READY_SEM_NAME, 0);
-    sem_t *alarm_ready_sem = sem_open(ALARM_READY_SEM_NAME, 0);
 
-    // simulation_ended_sem = sem_open(SIM_END_SEM_NAME, 0);
-    // manager_ended_sem = sem_open(MAN_END_SEM_NAME, 0);
 
     pthread_t monitor_sim_thread;
 
@@ -64,7 +58,6 @@ int main()
 
     // Initialise Capcity
     init_capacity(&capacity);
-    // print_capacity(&capacity);
 
     printf("Manager started.\n");
     if (get_shared_object(&shm))
@@ -78,8 +71,7 @@ int main()
         return -1;
     }
 
-    printf("Init Entrance threads.\n");
-    // pthread_t entrance_BG_threads[ENTRANCES];
+    // Monitor Entrance Functionality
     pthread_t entrance_threads[ENTRANCES];
     entrance_t *entrance;
     entrance_data_t entrance_data[ENTRANCES];
@@ -92,13 +84,12 @@ int main()
         pthread_create(&entrance_threads[i], NULL, monitor_entrance, (void *)&entrance_data[i]);
     }
 
+    // Monitor Level LPR Functionality
     pthread_t level_lpr_threads[LEVELS];
-    // LPR_t *lpr;
     level_t *level;
     level_lpr_data_t level_data[LEVELS];
     for (size_t i = 0; i < LEVELS; i++)
     {
-        // get_lpr(&shm, i, &lpr);
         get_level(&shm, i, &level);
         level_data[i].lpr = &(level->lpr);
         level_data[i].temp = (char *)&(level->sensor);
@@ -109,6 +100,7 @@ int main()
         pthread_create(&level_lpr_threads[i], NULL, monitor_lpr, (void *)&level_data[i]);
     }
 
+    // Monitor EXIT LPR Functionality
     pthread_t exit_threads[EXITS];
     exit_t *exit;
     monitor_exit_t exit_data[EXITS];
@@ -165,7 +157,6 @@ int main()
         for (int i = 0; i < LEVELS; i++)
         {
             printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\t| Temerature: %.2s C\t | Alarm: %.1s\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL, level_data[i].temp, level_data[i].alarm);
-            // printf("Level: %d \t| License Plate Reader: %s\t| Capacity: %d/%d\t| Temerature: %p C\t | Alarm: %.1s\n", i + 1, level_data[i].lpr->plate, capacity.curr_capacity[i], NUM_SPOTS_LVL, &level_data[i].temp, level_data[i].alarm);
         }
         printf("\n");
 

@@ -46,7 +46,4 @@ void *control_boom_gate(boom_gate_t *boom_gate, char update_status);
 void *monitor_entrance(void *data);
 void *monitor_lpr(void *data);
 void *monitor_exit(void *data);
-
-// void *handle_entrance_boomgate(void *data);
-
 void *wait_sim_close(void *data);

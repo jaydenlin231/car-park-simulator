@@ -165,6 +165,7 @@ void htab_destroy(htab_t *h)
     h->size = 0;
 }
 
+// Import lines of car rego to hastable
 htab_t import_htable(char fname[])
 {
     htab_t htable;

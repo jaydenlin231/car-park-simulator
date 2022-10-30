@@ -23,11 +23,11 @@ int get_empty_spot(capacity_t *capacity)
             }
         }
     }
-    // Carpark Full
+    // Signal Carpark Full
     capacity->full = true;
     return 0;
 }
-
+// Increase car park capacity for a level
 void set_capacity(capacity_t *capacity, int level)
 {
     if (!capacity->full)
@@ -40,6 +40,7 @@ void set_capacity(capacity_t *capacity, int level)
     }
 }
 
+// Free car park capacity from a level
 void free_carpark_space(capacity_t *capacity, int level)
 {
     int cap = capacity->curr_capacity[level - 1] - 1;
@@ -55,6 +56,7 @@ void free_carpark_space(capacity_t *capacity, int level)
     }
 }
 
+// Print the current capacity of all levels
 void print_capacity(capacity_t *capacity)
 {
     printf("Capacity: [ ");
