@@ -116,6 +116,8 @@ int main()
     {
         get_exit(&shm, i, &exit);
         exit_data[i].exit = exit;
+        get_level(&shm, i, &level);
+        exit_data[i].level = level;
         exit_data[i].hashtable = &hashtable;
         exit_data[i].revenue = &total_revenue;
         exit_data[i].exit_number = i + 1;

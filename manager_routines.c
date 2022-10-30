@@ -154,6 +154,7 @@ void *monitor_exit(void *data)
     boom_gate_t *boom_gate = &exit->boom_gate;
     LPR_t *exit_LPR = &exit->lpr;
     htab_t *hashtable = monitor_exit_data->hashtable;
+    level_t *level = monitor_exit_data->level;
     double *revenue = monitor_exit_data->revenue;
 
     while (true)
@@ -162,12 +163,18 @@ void *monitor_exit(void *data)
         pthread_mutex_lock(&exit_LPR->mutex);
         while (exit_LPR->plate[0] == NULL)
         {
+            // printf("waiting 1\n");
             pthread_cond_wait(&exit_LPR->cond, &exit_LPR->mutex);
         }
         // printf("%s\n", exit_LPR->plate);
         pthread_mutex_unlock(&exit_LPR->mutex);
 
         // Signal Open
+        if (level->alarm == '1')
+        {
+            // printf("FIRE\n");
+            continue;
+        }
         pthread_mutex_lock(&boom_gate->mutex);
         control_boom_gate(boom_gate, BG_RAISING);
 
@@ -180,6 +187,13 @@ void *monitor_exit(void *data)
         }
         pthread_mutex_unlock(&boom_gate->mutex);
 
+        // // If alarm 1 continue
+        // if (level->alarm == '1')
+        // {
+        //     // printf("FIRE\n");
+        //     continue;
+        // }
+
         // Auto Lowering
         if (boom_gate->status == BG_OPENED)
         {
@@ -190,6 +204,7 @@ void *monitor_exit(void *data)
             car->entry_time = 0;
             car->actual_lvl = 0;
             car->directed_lvl = 0;
+            pthread_mutex_unlock(&hashtable->mutex);
 
             msleep(20 * TIME_MULTIPLIER); // Lower after 20ms
             pthread_mutex_lock(&boom_gate->mutex);

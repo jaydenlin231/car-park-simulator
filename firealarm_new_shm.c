@@ -247,19 +247,23 @@ void *open_ex_boomgate(void *arg)
 
     do
     {
+        printf("Mutex lock\n");
         pthread_mutex_lock(&bg->mutex);
         if (bg->status != 'O')
         {
+            printf("Raising\n");
             bg->status = 'R';
             pthread_mutex_unlock(&bg->mutex);
             pthread_cond_broadcast(&bg->cond);
         }
         else if (bg->status == 'O')
         {
+            printf("EXIT COND WAIT on status: %c\n", bg->status);
             pthread_cond_wait(&bg->cond, &bg->mutex);
         }
         else
         {
+            printf("Mutex unlock\n");
             pthread_mutex_unlock(&bg->mutex);
         }
     } while (bg->status != 'O');
@@ -367,7 +371,8 @@ int main()
         }
     }
 
-    for (int i = 0; i < LEVELS; i++) {
+    for (int i = 0; i < LEVELS; i++)
+    {
         pthread_join(threads[i], NULL);
     }
 

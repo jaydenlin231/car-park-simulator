@@ -36,6 +36,7 @@ typedef struct monitor_exit
     htab_t *hashtable;
     int exit_number;
     double *revenue;
+    level_t *level;
     pthread_mutex_t revenue_mutex;
 
 } monitor_exit_t;
