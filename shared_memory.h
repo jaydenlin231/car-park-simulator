@@ -45,4 +45,3 @@ void get_lpr(shared_memory_t *shm, int i, LPR_t **lpr);
 
 void init_entrance_data(shared_memory_t *shm);
 
-void showPshared(pthread_mutexattr_t *mta);

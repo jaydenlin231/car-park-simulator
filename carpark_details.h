@@ -1,17 +1,20 @@
 #pragma once
 #include <pthread.h>
 
+// Car Park Configuration
 #define LEVELS 5
-#define ENTRANCES 1
+#define ENTRANCES 5
 #define EXITS 5
 #define NUM_SPOTS_LVL 10
 
+// Boom Gate States
 #define BG_RAISING ('R')
 #define BG_OPENED ('O')
 #define BG_LOWERING ('L')
 #define BG_CLOSED ('C')
 #define BG_QUIT ('Q')
 
+// Car Park Component Types
 typedef struct LPR
 {
     pthread_mutex_t mutex;
@@ -54,9 +57,7 @@ typedef struct exit
 typedef struct level
 {
     LPR_t lpr;
-    // tempSensor_t *tempSensor;
     char sensor[2];
-    // alarm_t *alarm;
     char alarm;
 
 } level_t;

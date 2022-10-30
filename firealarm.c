@@ -1,38 +1,34 @@
-#include <fcntl.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <pthread.h>
 #include <sys/mman.h>
 #include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <semaphore.h>
 
-int shm_fd;
-volatile void *shm;
+#include "carpark_details.h"
+#include "shared_memory.h"
+#include "utility.h"
+
+
+// Firealarm defines
+#define MEDIAN_WINDOW 5
+#define TEMPCHANGE_WINDOW 30
+int lv_id[LEVELS];
+
+#define FILE_LOC "plates.txt"
+
+int16_t shm_fd;
+static shared_memory_t shm;
 
 int alarm_active = 0;
 pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;
-
-#define LEVELS 5
-#define ENTRANCES 5
-#define EXITS 5
-
-#define MEDIAN_WINDOW 5
-#define TEMPCHANGE_WINDOW 30
-
-struct boomgate
-{
-    pthread_mutex_t m;
-    pthread_cond_t c;
-    char s;
-};
-struct parkingsign
-{
-    pthread_mutex_t m;
-    pthread_cond_t c;
-    char display;
-};
 
 struct tempnode
 {
@@ -53,24 +49,40 @@ struct tempnode *deletenodes(struct tempnode *templist, int after)
     }
     return templist;
 }
+
 int compare(const void *first, const void *second)
 {
     return *((const int *)first) - *((const int *)second);
 }
 
-void tempmonitor(int level)
+void *tempmonitor(void *levelArg)
 {
-    struct tempnode *templist = NULL, *newtemp, *medianlist = NULL, *oldesttemp;
-    int count, addr, temp, mediantemp, hightemps;
+    int level = (*(int *)levelArg);
+    level_t *current_level;
+    get_level(&shm, level, &current_level);
+    char *sensor = current_level->sensor;
 
-    for (;;)
-    {
-        // Calculate address of temperature sensor
-        addr = 0150 * level + 2496;
-        temp = *((int16_t *)(shm + addr));
+    struct tempnode *templist = calloc(1, sizeof(struct tempnode));
+    struct tempnode *newtemp;
+    struct tempnode *medianlist = calloc(1, sizeof(struct tempnode));
+    struct tempnode *oldesttemp;
+    int count;
+    int temp;
+    int mediantemp;
+    int hightemps;
+    char *sign;
 
-        // Add temperature to beginning of linked list
-        newtemp = malloc(sizeof(struct tempnode));
+    // intptr_t level = (intptr_t) levelArg;
+    while (alarm_active == 0)
+    { // !!NASA Power of 10: #2 (loops have fixed bounds)!
+        char firstChar = sensor[0] - '0';
+        char secondChar = sensor[1] - '0';
+        temp = firstChar * 10 + secondChar;
+        current_level->alarm = '0';
+
+        // Add temperature to beginning of linked lis
+        // newtemp = malloc(sizeof(struct tempnode));
+        newtemp = calloc(1, sizeof(struct tempnode));
         newtemp->temperature = temp;
         newtemp->next = templist;
         templist = newtemp;
@@ -87,7 +99,7 @@ void tempmonitor(int level)
 
         if (count == MEDIAN_WINDOW)
         { // Temperatures are only counted once we have 5 samples
-            int *sorttemp = malloc(sizeof(int) * MEDIAN_WINDOW);
+            int *sorttemp = calloc(MEDIAN_WINDOW, sizeof(int));
             count = 0;
             for (struct tempnode *t = templist; t != NULL; t = t->next)
             {
@@ -95,9 +107,10 @@ void tempmonitor(int level)
             }
             qsort(sorttemp, MEDIAN_WINDOW, sizeof(int), compare);
             mediantemp = sorttemp[(MEDIAN_WINDOW - 1) / 2];
+            free(sorttemp);
 
             // Add median temp to linked list
-            newtemp = malloc(sizeof(struct tempnode));
+            newtemp = calloc(1, sizeof(struct tempnode));
             newtemp->temperature = mediantemp;
             newtemp->next = medianlist;
             medianlist = newtemp;
@@ -114,9 +127,14 @@ void tempmonitor(int level)
                 // Temperatures of 58 degrees and higher are a concern
                 if (t->temperature >= 58)
                     hightemps++;
+
                 // Store the oldest temperature for rate-of-rise detection
                 oldesttemp = t;
                 count++;
+                if (count > 30)
+                {
+                    break;
+                }
             }
 
             if (count == TEMPCHANGE_WINDOW)
@@ -124,102 +142,157 @@ void tempmonitor(int level)
                 // If 90% of the last 30 temperatures are >= 58 degrees,
                 // this is considered a high temperature. Raise the alarm
                 if (hightemps >= TEMPCHANGE_WINDOW * 0.9)
+                {
+                    printf("Option 1: High Temperature Detected.\n");
                     alarm_active = 1;
+                    current_level->alarm = 1;
+                }
 
                 // If the newest temp is >= 8 degrees higher than the oldest
                 // temp (out of the last 30), this is a high rate-of-rise.
                 // Raise the alarm
-                if (templist->temperature - oldesttemp->temperature >= 8)
+                if (templist->temperature - oldesttemp->temperature >= 8 && oldesttemp->temperature != 0)
+                {
+
+                    printf("Option 2: High Rate-of-Rise Detected.\n");
                     alarm_active = 1;
+                    current_level->alarm = 1;
+                }
             }
         }
 
         usleep(2000);
     }
+    return NULL;
 }
 
-void *openboomgate(void *arg)
+void *open_en_boomgate(void *arg)
 {
-    struct boomgate *bg = arg;
-    pthread_mutex_lock(&bg->m);
-    for (;;)
+    int i = *((int *)arg);
+    entrance_t *entrance;
+    get_entrance(&shm, i, &entrance);
+    boom_gate_t *bg = &entrance->boom_gate;
+
+    do
     {
-        if (bg->s == 'C')
+        pthread_mutex_lock(&bg->mutex);
+        if (bg->status == 'C')
         {
-            bg->s = 'R';
-            pthread_cond_broadcast(&bg->c);
+            bg->status = 'R';
+            pthread_mutex_unlock(&bg->mutex);
+            pthread_cond_broadcast(&bg->cond);
         }
-        if (bg->s == 'O')
+        else if (bg->status == 'O')
         {
+            pthread_cond_wait(&bg->cond, &bg->mutex);
         }
-        pthread_cond_wait(&bg->c, &bg->m);
-    }
-    pthread_mutex_unlock(&bg->m);
+        else
+        {
+            pthread_mutex_unlock(&bg->mutex);
+        }
+    } while (bg->status != 'O');
+    return NULL;
+}
+
+void *open_ex_boomgate(void *arg)
+{
+    int i = *((int *)arg);
+    exit_t *exit;
+    get_exit(&shm, i, &exit);
+    boom_gate_t *bg = &exit->boom_gate;
+
+    do
+    {
+        pthread_mutex_lock(&bg->mutex);
+        if (bg->status != 'O')
+        {
+            bg->status = 'R';
+            pthread_mutex_unlock(&bg->mutex);
+            pthread_cond_broadcast(&bg->cond);
+        }
+        else if (bg->status == 'O')
+        {
+            pthread_cond_wait(&bg->cond, &bg->mutex);
+        }
+        else
+        {
+            pthread_mutex_unlock(&bg->mutex);
+        }
+    } while (bg->status != 'O');
+    return NULL;
 }
 
 int main()
 {
-    shm_fd = shm_open("PARKING", O_RDWR, 0);
-    shm = (volatile void *)mmap(0, 2920, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+    printf("Fire Alarm Started\n");
+    int en_id[ENTRANCES];
+    int ex_id[EXITS];
 
-    pthread_t *threads = malloc(sizeof(pthread_t) * LEVELS);
-
-    for (int i = 0; i < LEVELS; i++)
+    if (get_shared_object(&shm))
     {
-        pthread_create(threads + i, NULL, (void *(*)(void *))tempmonitor, (void *)i);
+        printf("Fire Alarm connected to shm.\n");
     }
-    for (;;)
+    else
     {
-        if (alarm_active)
-        {
-            goto emergency_mode;
-        }
+        perror("Shared memory connection failed.");
+        return -1;
+    }
+
+    pthread_t threads[LEVELS];
+    for (intptr_t i = 0; i < LEVELS; i++)
+    {
+        lv_id[i] = i;
+
+        pthread_create(&threads[i], NULL, tempmonitor, (void *)&lv_id[i]);
+    }
+    while (!alarm_active)
+    {
         usleep(1000);
     }
-
-emergency_mode:
     fprintf(stderr, "*** ALARM ACTIVE ***\n");
-
-    // Handle the alarm system and open boom gates
-    // Activate alarms on all levels
-    for (int i = 0; i < LEVELS; i++)
+    if (alarm_active)
     {
-        int addr = 0150 * i + 2498;
-        char *alarm_trigger = (char *)shm + addr;
-        *alarm_trigger = 1;
+        // Handle the alarm system and open boom gates
+        // Activate alarms on all levels
+        level_t *level;
+        for (int i = 0; i < LEVELS; i++)
+        {
+            get_level(&shm, i, &level);
+            level->alarm = '1';
+        }
     }
-
     // Open up all boom gates
-    pthread_t *boomgatethreads = malloc(sizeof(pthread_t) * (ENTRANCES + EXITS));
+    pthread_t entrance_threads[ENTRANCES];
     for (int i = 0; i < ENTRANCES; i++)
     {
-        int addr = 288 * i + 96;
-        volatile struct boomgate *bg = shm + addr;
-        pthread_create(boomgatethreads + i, NULL, openboomgate, bg);
+        en_id[i] = i;
+        pthread_create(&entrance_threads[i], NULL, open_en_boomgate, (void *)&en_id[i]);
     }
+    pthread_t exit_threads[EXITS];
     for (int i = 0; i < EXITS; i++)
     {
-        int addr = 192 * i + 1536;
-        volatile struct boomgate *bg = shm + addr;
-        pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate, bg);
+        ex_id[i] = i;
+        pthread_create(&exit_threads[i], NULL, open_ex_boomgate, (void *)&ex_id[i]);
     }
 
     // Show evacuation message on an endless loop
-    for (;;)
+    while (alarm_active == 1)
     {
         char *evacmessage = "EVACUATE ";
         for (char *p = evacmessage; *p != '\0'; p++)
         {
+            entrance_t *entrance;
             for (int i = 0; i < ENTRANCES; i++)
             {
-                int addr = 288 * i + 192;
-                volatile struct parkingsign *sign = shm + addr;
-                pthread_mutex_lock(&sign->m);
+                get_entrance(&shm, i, &entrance);
+                info_sign_t *sign = &entrance->info_sign;
+
+                pthread_mutex_lock((void *)&sign->mutex);
                 sign->display = *p;
-                pthread_cond_broadcast(&sign->c);
-                pthread_mutex_unlock(&sign->m);
+                pthread_cond_broadcast((void *)&sign->cond);
+                pthread_mutex_unlock((void *)&sign->mutex);
             }
-            msleep(2);
+            usleep(20000 * TIME_MULTIPLIER);
         }
     }
 
@@ -228,6 +301,5 @@ emergency_mode:
         pthread_join(threads[i], NULL);
     }
 
-    munmap((void *)shm, 2920);
-    close(shm_fd);
+    return 0;
 }
