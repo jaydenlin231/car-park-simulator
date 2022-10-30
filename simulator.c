@@ -160,30 +160,32 @@ int main()
     printf("Simulation ready to start\n");
     printf("Waiting for manager ready\n");
 
-    sem_wait(manager_ready_sem);
 
-    char temp_mode = TEMP_MODE;
+    // char temp_mode = TEMP_MODE;
+    char temp_mode;
     printf("Choose Temperature Generation Type \nN- Normal Mode\nF - Fixed Temp\nR - Rate of Rise\n-> ");
-    // // scanf(" %c", &temp_mode);
-    // while (temp_mode == '\0')
-    // {
-    //     switch (temp_mode)
-    //     {
-    //     case 'N':
-    //         printf("Setting Temp generation cycle to Normal\n");
-    //         break;
-    //     case 'F':
-    //         printf("Setting Temp generation cycle to Fixed Temp\n");
-    //         break;
-    //     case 'R':
-    //         printf("Setting Temp generation cycle to Rate of Rise\n");
-    //         break;
-    //     default:
-    //         printf("Unrecognised Input");
-    //     }
-    //     printf("\n -> ");
-    //     scanf(" %c", &temp_mode);
-    // }
+    // scanf(" %c", &temp_mode);
+    while (temp_mode == '\0')
+    {
+        switch (temp_mode)
+        {
+        case 'N':
+            printf("Setting Temp generation cycle to Normal\n");
+            break;
+        case 'F':
+            printf("Setting Temp generation cycle to Fixed Temp\n");
+            break;
+        case 'R':
+            printf("Setting Temp generation cycle to Rate of Rise\n");
+            break;
+        default:
+            printf("Unrecognised Input");
+        }
+        printf("\n -> ");
+        scanf(" %c", &temp_mode);
+    }
+
+    sem_wait(manager_ready_sem);
     pthread_t thread_fire[LEVELS];
     sensor_data_t level_sensor_datas[LEVELS];
     level_t *levels;

@@ -265,6 +265,15 @@ void *handle_entrance_boomgate(void *data)
             exit(1);
         };
         // printf("Boom Gate %p Received Instruction Status: %c.\n", boom_gate, boom_gate->status);
+        if(!(sign->display > '0' && sign->display <= ('0' + LEVELS) && sign->display !='\0' )){
+                printf("The sign displayed %c\n", sign->display);
+                pthread_mutex_lock(&boom_gate->mutex);
+                boom_gate->status = BG_OPENED;
+                // printf("Boom Gate %p Opened\n", boom_gate);
+                pthread_cond_signal(&boom_gate->cond);
+                pthread_mutex_unlock(&boom_gate->mutex);
+                continue;
+        }
         if (boom_gate->status == BG_RAISING)
         {
             // printf("Raising Boom Gate %p...\n", boom_gate);
@@ -516,7 +525,7 @@ void *sim_fire_sensors(void *data)
                 // sensor_datas->level->sensor[0] = 2 + '0';
                 // sensor_datas->level->sensor[1] = 5 + '0';
             }
-            int rand_num = (rand() % 100) + 1;
+            int rand_num = (rand() % 1000) + 1;
 
             switch (sensor_datas->type)
             {
@@ -526,7 +535,7 @@ void *sim_fire_sensors(void *data)
                 sensor_datas->level->sensor[1] = 3 + '0';
                 if (!temp_high)
                 {
-                    if ((rand() % 100 + 1) <= 1)
+                    if (rand_num <= 1)
                     {
                         // 0-10
                         temp_high = true;
@@ -536,7 +545,7 @@ void *sim_fire_sensors(void *data)
                     // 11-100
                     {
                         // 11-40
-                        if ((rand() % 100 + 1) < 40)
+                        if (rand_num < 400)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 5 + '0';
@@ -544,21 +553,21 @@ void *sim_fire_sensors(void *data)
                         }
                         // else
                         // 41-60
-                        else if ((rand() % 100 + 1) < 60)
+                        else if (rand_num < 600)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 2 + '0';
                             break;
                         }
                         // 60-
-                        else if ((rand() % 100 + 1) < 80)
+                        else if (rand_num < 800)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 4 + '0';
                             break;
                         }
                         // else
-                        else if ((rand() % 100 + 1) <= 100)
+                        else if (rand_num <= 1000)
                         {
                             sensor_datas->level->sensor[0] = 2 + '0';
                             sensor_datas->level->sensor[1] = 1 + '0';
@@ -578,7 +587,7 @@ void *sim_fire_sensors(void *data)
                     }
                     else
                     {
-                        if ((rand() % 100 + 1) < 50)
+                        if (rand_num < 500)
                         {
                             sensor_datas->level->sensor[0] = 6 + '0';
                             sensor_datas->level->sensor[1] = 2 + '0';
@@ -594,7 +603,7 @@ void *sim_fire_sensors(void *data)
                 }
                 break;
             case 'R':
-                if (rand_num >= 60)
+                if (rand_num >= 600)
                 {
                     int c = (atoi(oldtemp)) + 4;
                     char *raise_temp;
@@ -621,7 +630,7 @@ void *sim_fire_sensors(void *data)
                 for (int i = 0; i < 1; i++)
                 {
                     // sensor_datas->level->sensor[i] = fixed_temp[i];
-                    sensor_datas->level->sensor[i] = 6 + '0';
+                    sensor_datas->level->sensor[i] = 2 + '0';
                     sensor_datas->level->sensor[i + 1] = 0 + '0';
                     // printf("%c%c ", sensor_datas->level->sensor[i], sensor_datas->level->sensor[i + 1]);
                 }

@@ -43,15 +43,15 @@ pthread_cond_t alarm_condvar = PTHREAD_COND_INITIALIZER;
 
 // struct boomgate
 // {
-// 	pthread_mutex_t m;
-// 	pthread_cond_t c;
-// 	char s;
+//  pthread_mutex_t m;
+//  pthread_cond_t c;
+//  char s;
 // };
 // struct parkingsign
 // {
-// 	pthread_mutex_t m;
-// 	pthread_cond_t c;
-// 	char display;
+//  pthread_mutex_t m;
+//  pthread_cond_t c;
+//  char display;
 // };
 
 struct tempnode
@@ -86,9 +86,9 @@ void *tempmonitor(void *levelArg)
     get_level(&shm, level, &current_level);
     char *sensor = current_level->sensor;
 
-    struct tempnode *templist = malloc(sizeof(struct tempnode));
+    struct tempnode *templist = calloc(1, sizeof(struct tempnode));
     struct tempnode *newtemp;
-    struct tempnode *medianlist = malloc(sizeof(struct tempnode));
+    struct tempnode *medianlist = calloc(1, sizeof(struct tempnode));
     struct tempnode *oldesttemp;
     int count;
     // int addr;
@@ -105,9 +105,11 @@ void *tempmonitor(void *levelArg)
         char firstChar = sensor[0] - '0';
         char secondChar = sensor[1] - '0';
         temp = firstChar * 10 + secondChar;
+        current_level->alarm = '0';
 
         // Add temperature to beginning of linked lis
-        newtemp = malloc(sizeof(struct tempnode));
+        // newtemp = malloc(sizeof(struct tempnode));
+        newtemp = calloc(1, sizeof(struct tempnode));
         newtemp->temperature = temp;
         newtemp->next = templist;
         templist = newtemp;
@@ -122,22 +124,31 @@ void *tempmonitor(void *levelArg)
             count++;
         }
 
+        // Delete nodes after 5th
+        // if(count > 5){
+        //     deletenodes(templist, MEDIAN_WINDOW);
+        // }
+
         if (count == MEDIAN_WINDOW)
         { // Temperatures are only counted once we have 5 samples
-            int *sorttemp = malloc(sizeof(int) * MEDIAN_WINDOW);
+            // int *sorttemp = malloc(sizeof(int) * MEDIAN_WINDOW);
+            int *sorttemp = calloc(MEDIAN_WINDOW, sizeof(int));
             count = 0;
             for (struct tempnode *t = templist; t != NULL; t = t->next)
             {
-                count++;
-                sorttemp[count] = t->temperature;
+                // count++;
+                sorttemp[count++] = t->temperature;
+                // printf("count is %d\n", count);
             }
             qsort(sorttemp, MEDIAN_WINDOW, sizeof(int), compare);
             mediantemp = sorttemp[(MEDIAN_WINDOW - 1) / 2];
+            free(sorttemp);
 
             // Add median temp to linked list
-            newtemp = malloc(sizeof(struct tempnode));
+            // newtemp = malloc(sizeof(struct tempnode));
+            newtemp = calloc(1, sizeof(struct tempnode));
             newtemp->temperature = mediantemp;
-            printf("Median Temp:%d\n", mediantemp);
+            // printf("Median Temp:%d\n", mediantemp);
             newtemp->next = medianlist;
             medianlist = newtemp;
 
@@ -168,7 +179,7 @@ void *tempmonitor(void *levelArg)
                 // this is considered a high temperature. Raise the alarm
                 if (hightemps >= TEMPCHANGE_WINDOW * 0.9)
                 {
-                    printf("Option 1\n");
+                    printf("Option 1: High Temperature Detected.\n");
                     alarm_active = 1;
                     // sign = shm + addr + 2;
                     // *sign = 1;
@@ -181,7 +192,7 @@ void *tempmonitor(void *levelArg)
                 if (templist->temperature - oldesttemp->temperature >= 8 && oldesttemp->temperature != 0)
                 {
 
-                    printf("Option 1\n");
+                    printf("Option 2: High Rate-of-Rise Detected.\n");
                     alarm_active = 1;
                     // sign = shm + addr + 2;
                     // *sign = 1;
@@ -230,9 +241,9 @@ void *open_ex_boomgate(void *arg)
     // struct boomgate *bg = arg;
     int i = *((int *)arg);
     // struct boomgate *bg = shm + 192 * i + 1536;
-    entrance_t *entrance;
-    get_entrance(&shm, i, &entrance);
-    boom_gate_t *bg = &entrance->boom_gate;
+    exit_t *exit;
+    get_exit(&shm, i, &exit);
+    boom_gate_t *bg = &exit->boom_gate;
 
     do
     {
@@ -276,12 +287,13 @@ int main()
         return -1;
     }
 
-    pthread_t *threads = malloc(sizeof(pthread_t) * LEVELS);
+    // pthread_t *threads = malloc(sizeof(pthread_t) * LEVELS);
+    pthread_t *threads[LEVELS];
     for (intptr_t i = 0; i < LEVELS; i++)
     {
         lv_id[i] = i;
 
-        pthread_create(threads + i, NULL, tempmonitor, (void *)&lv_id[i]);
+        pthread_create(&threads[i], NULL, tempmonitor, (void *)&lv_id[i]);
     }
     while (!alarm_active)
     {
@@ -295,15 +307,16 @@ int main()
         level_t *level;
         for (int i = 0; i < LEVELS; i++)
         {
-            // 	int addr = 0150 * i + 2498; // no octat
-            // 	char *alarm_trigger = (char *)shm + addr;
+            //  int addr = 0150 * i + 2498; // no octat
+            //  char *alarm_trigger = (char *)shm + addr;
             // *alarm_trigger = '1';
             get_level(&shm, i, &level);
             level->alarm = '1';
         }
     }
     // Open up all boom gates
-    pthread_t *boomgatethreads = malloc(sizeof(pthread_t) * (ENTRANCES + EXITS));
+    // pthread_t *boomgatethreads = malloc(sizeof(pthread_t) * (ENTRANCES + EXITS));
+    pthread_t *entrance_threads[ENTRANCES];
     for (int i = 0; i < ENTRANCES; i++)
     {
         en_id[i] = i;
@@ -312,8 +325,10 @@ int main()
         // volatile struct boomgate *bg = shm + addr;
         // pthread_cond_broadcast((void *)&bg->cond);
         // pthread_create(boomgatethreads + i, NULL, openboomgate, (void*)bg);
-        pthread_create(boomgatethreads + i, NULL, open_en_boomgate, (void *)&en_id[i]);
+        // pthread_create(boomgatethreads + i, NULL, open_en_boomgate, (void *)&en_id[i]);
+        pthread_create(&entrance_threads[i], NULL, open_en_boomgate, (void *)&en_id[i]);
     }
+    pthread_t *exit_threads[EXITS];
     for (int i = 0; i < EXITS; i++)
     {
         ex_id[i] = i;
@@ -322,7 +337,7 @@ int main()
         // volatile struct boomgate *bg = shm + addr;
         // pthread_cond_broadcast((void *)&bg->cond);
         // pthread_create(boomgatethreads + ENTRANCES + i, NULL, openboomgate, (void*)bg);
-        pthread_create(boomgatethreads + ENTRANCES + i, NULL, open_ex_boomgate, (void *)&ex_id[i]);
+        pthread_create(&exit_threads[i], NULL, open_ex_boomgate, (void *)&ex_id[i]);
     }
 
     // Show evacuation message on an endless loop
@@ -330,7 +345,7 @@ int main()
     {
         // if ((*(char *)(shm + 2919)) == 1)
         // {
-        // 	break;
+        //  break;
         // }
         char *evacmessage = "EVACUATE ";
         for (char *p = evacmessage; *p != '\0'; p++)
@@ -352,9 +367,9 @@ int main()
         }
     }
 
-    // for (int i = 0; i < LEVELS; i++) {
-    // 	pthread_join(threads[i], NULL);
-    // }
+    for (int i = 0; i < LEVELS; i++) {
+        pthread_join(threads[i], NULL);
+    }
 
     // munmap((void *)shm, 2920);
     // close(shm_fd);

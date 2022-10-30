@@ -117,8 +117,18 @@ void *monitor_entrance(void *data)
             }
             else
             {
-                // printf("Carpark FULL\n");
+                pthread_mutex_lock(&info_sign->mutex);
+                info_sign->display = 'F';
+                pthread_cond_broadcast(&info_sign->cond);
+                pthread_mutex_unlock(&info_sign->mutex);
             }
+        }
+        else
+        {
+            pthread_mutex_lock(&info_sign->mutex);
+            info_sign->display = 'X';
+            pthread_cond_broadcast(&info_sign->cond);
+            pthread_mutex_unlock(&info_sign->mutex);
         }
 
         pthread_mutex_lock(&LPR->mutex);
